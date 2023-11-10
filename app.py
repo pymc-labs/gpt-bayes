@@ -38,9 +38,10 @@ def eval_model_code(model_code, data_dict):
     try:
         # Make data_dict available in the local scope for the exec function
         local_scope = data_dict.copy()
-        exec(model_code, globals(), local_scope)
-        trace = pm.sample(nuts_sampler="numpyro")
-        summary = pm.summary(trace)
+        with pm.Model() as model:
+            exec(model_code, globals(), local_scope)
+            idata = pm.sample(nuts_sampler="numpyro")
+            summary = pm.summary(trace)
         # Log summary for debugging
         logging.debug("Summary: %s", summary)
         return {'summary': str(summary)}
