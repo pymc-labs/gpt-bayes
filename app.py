@@ -9,25 +9,22 @@ app = Flask(__name__)
 def run_dynamic_pymc_model():
     # Extract model code and data from the request
     model_code = request.json.get('model_code')
-    data = request.json.get('data', [])
-
-    # Convert data to NumPy array
-    data_array = np.array(data)
+    data_dict = request.json.get('data', {})
 
     # Validate the model code and data
     # IMPORTANT: Ensure the model_code and data do not contain malicious elements
 
     # Execute the model with data
-    results = eval_model_code(model_code, data_array)
+    results = eval_model_code(model_code, data_dict)
 
     return jsonify(results)
 
-def eval_model_code(model_code, data):
+def eval_model_code(model_code, data_dict):
     # Dynamically execute the model code with data
     # WARNING: Ensure robust validation of model_code and data to prevent security risks.
     try:
-        # Make data available in the local scope for the exec function
-        local_scope = {'data': data}
+        # Make data_dict available in the local scope for the exec function
+        local_scope = data_dict.copy()
         exec(model_code, globals(), local_scope)
         trace = pm.sample(1000, nuts_sampler="numpyro")
         return {'summary': str(pm.summary(trace))}
@@ -35,4 +32,4 @@ def eval_model_code(model_code, data):
         return {'error': str(e)}
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
