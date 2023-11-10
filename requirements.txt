@@ -1,3 +1,4 @@
 pymc
 Flask
 gunicorn
+numpyro
