@@ -37,7 +37,7 @@ def eval_model_code(model_code, data_dict):
     # Dynamically execute the model code with data
     try:
         # Make data_dict available in the local scope for the exec function
-        local_scope = data_dict.copy()
+        local_scope = {'pm': pm, 'np': np, 'data': data_dict}
         with pm.Model() as model:
             exec(model_code, globals(), local_scope)
             idata = pm.sample(nuts_sampler="numpyro")
