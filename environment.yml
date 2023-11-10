@@ -1,4 +1,4 @@
-name: pymc
+name: root
 dependencies:
   - pymc
   - Flask

@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: conda activate root; gunicorn app:app
