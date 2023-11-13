@@ -40,7 +40,7 @@ def eval_model_code(model_code, data_dict):
         local_scope = {'pm': pm, 'np': np, 'data': data_dict}
         with pm.Model() as model:
             exec(model_code, globals(), local_scope)
-            idata = pm.sample(nuts_sampler="numpyro")
+            idata = pm.sample(draws=100, chains=1, cores=1)
             summary = pm.summary(idata)
         # Log summary for debugging
         logging.debug("Summary: %s", summary)
