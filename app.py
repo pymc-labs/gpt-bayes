@@ -50,4 +50,4 @@ def eval_model_code(model_code, data_dict):
         return {'error': str(e)}
 
 if __name__ == '__main__':
-    app.run(threaded=False, workers=4)
+    app.run() #threaded=False, workers=4)
