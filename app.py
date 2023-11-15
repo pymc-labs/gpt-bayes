@@ -16,8 +16,8 @@ def run_dynamic_pymc_model():
 
     # Extract model code and data from the request
     model_code = request.json.get('model_code')
-    data_dict = request.json.get('data', {})
-
+    # data_dict = request.json.get('data', {})
+    data_dict = {"x": np.array([1., 2., 3.]), "y": np.array([0.5, -1., 2.])}
     # Log extracted model code and data for debugging
     logging.debug("Model code: %s", model_code)
     logging.debug("Data: %s", data_dict)
