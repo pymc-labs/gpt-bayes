@@ -1,2 +1,2 @@
-g++
+clang
 libopenblas-dev
