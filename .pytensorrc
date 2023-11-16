@@ -1,0 +1,2 @@
+[global]
+cxx=/app/.apt/usr/bin/clang++
