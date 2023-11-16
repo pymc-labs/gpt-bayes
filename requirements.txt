@@ -2,3 +2,4 @@ pymc
 Flask
 gunicorn
 numpyro
+pymc-marketing
