@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - -e git+https://github.com/lucianopaz/pytensor@blas_no_cxx
   - pymc
   - Flask
   - gunicorn
