@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import pymc as pm
 from pymc_marketing.mmm import DelayedSaturatedMMM
+import pandas as pd
 import numpy as np
 import json
 import logging
@@ -66,48 +67,33 @@ def debug():
 
 @app.route('/run_mmm', methods=['POST'])
 def run_mmm():
-    # Log the raw request data for debugging
-    logging.debug("Received request data: %s", request.data)
+    data = request.get_json()
+    df = pd.DataFrame(data['df'])
 
-    # Extract model code and data from the request
-    model_code = request.json.get('model_code')
-    data_dict = request.json.get('data_dict')
-    # data_dict = {"x": np.array([1., 2., 3.]), "y": np.array([0.5, -1., 2.])}
-    # Log extracted model code and data for debugging
-    logging.debug("Model code: %s", model_code)
-    logging.debug("Data: %s", data_dict)
+    # Optional parameters with default values
+    date_column = data.get('date_column', 'date')
+    channel_columns = data.get('channel_columns', [])
+    adstock_max_lag = data.get('adstock_max_lag', 8)
+    yearly_seasonality = data.get('yearly_seasonality', 2)
 
-    # Validate the model code and data
-    # IMPORTANT: Ensure the model_code and data do not contain malicious elements
+    # Define the MMM model with optional parameters
+    mmm = DelayedSaturatedMMM(
+        date_column=date_column,
+        channel_columns=channel_columns,
+        adstock_max_lag=adstock_max_lag,
+        yearly_seasonality=yearly_seasonality,
+    )
 
-    # Execute the model with data
-    try:
-        mmm = DelayedSaturatedMMM(
-            date_column="date_week",
-            channel_columns=["x1", "x2"],
-            control_columns=[
-                "event_1",
-                "event_2",
-                "t",
-            ],
-            adstock_max_lag=8,
-            yearly_seasonality=2,
-        )
-        X = data.drop('y',axis=1)
-        y = data['y']
-        mmm.fit(X, y)
-        mmm.plot_components_contributions();
-        
-        logging.debug("Summary: %s", summary)
-        return {'summary': str(summary)}
-    except Exception as e:
-        logging.error("Error in eval_model_code: %s", e)
-        return {'error': str(e)}
+    # Fit the model
+    X = df.drop('sales', axis=1)
+    y = df['sales']
+    mmm.fit(X, y)
 
-    # Log results for debugging
-    logging.debug("Model results: %s", results)
+    # Extract summary statistics from the trace
+    summary = az.summary(mmm.fit_result)
+    summary_json = summary.to_json(orient='split')
 
-    return jsonify(results)
+    return jsonify({'status': 'Model executed successfully', 'summary': summary_json})
 
 if __name__ == '__main__':
     app.run() #threaded=False, workers=4)
