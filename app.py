@@ -68,7 +68,7 @@ def debug():
 @app.route('/run_mmm', methods=['POST'])
 def run_mmm():
     data = request.get_json()
-    df = pd.DataFrame(data['df'])
+    df = pd.read_json(data["df"])
 
     # Optional parameters with default values
     date_column = data.get('date_column', 'date')
