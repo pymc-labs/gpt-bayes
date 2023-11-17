@@ -1,2 +1,2 @@
 [global]
-cxx=/app/.apt/usr/bin/g++
+cxx=/app/.apt/usr/bin/gcc
