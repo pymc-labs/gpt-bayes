@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
 import pymc as pm
+import arviz as az
 from pymc_marketing.mmm import DelayedSaturatedMMM
 import pandas as pd
 import numpy as np
 import json
 import logging
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -67,33 +69,36 @@ def debug():
 
 @app.route('/run_mmm', methods=['POST'])
 def run_mmm():
-    data = request.get_json()
-    df = pd.read_json(data["df"])
+    try:
+        data = request.get_json()
+        df = pd.read_json(io.StringIO(data["df"]), orient="split")
 
-    # Optional parameters with default values
-    date_column = data.get('date_column', 'date')
-    channel_columns = data.get('channel_columns', [])
-    adstock_max_lag = data.get('adstock_max_lag', 8)
-    yearly_seasonality = data.get('yearly_seasonality', 2)
+        # Optional parameters with default values
+        date_column = data.get('date_column', 'date')
+        channel_columns = data.get('channel_columns', [])
+        adstock_max_lag = data.get('adstock_max_lag', 8)
+        yearly_seasonality = data.get('yearly_seasonality', 2)
 
-    # Define the MMM model with optional parameters
-    mmm = DelayedSaturatedMMM(
-        date_column=date_column,
-        channel_columns=channel_columns,
-        adstock_max_lag=adstock_max_lag,
-        yearly_seasonality=yearly_seasonality,
-    )
+        # Define the MMM model with optional parameters
+        mmm = DelayedSaturatedMMM(
+            date_column=date_column,
+            channel_columns=channel_columns,
+            adstock_max_lag=adstock_max_lag,
+            yearly_seasonality=yearly_seasonality,
+        )
 
-    # Fit the model
-    X = df.drop('sales', axis=1)
-    y = df['sales']
-    mmm.fit(X, y)
+        # Fit the model
+        X = df.drop('sales', axis=1)
+        y = df['sales']
+        mmm.fit(X, y, chains=1, cores=1, nuts_sampler="numpyro")
 
-    # Extract summary statistics from the trace
-    summary = az.summary(mmm.fit_result)
-    summary_json = summary.to_json(orient='split')
+        # Extract summary statistics from the trace
+        summary = az.summary(mmm.fit_result)
+        summary_json = summary.to_json(orient='split')
+    except Exception as e:
+        return jsonify({"status": "Error", "summary": str(e)})
 
     return jsonify({'status': 'Model executed successfully', 'summary': summary_json})
 
 if __name__ == '__main__':
-    app.run() #threaded=False, workers=4)
+    app.run(threaded=False, workers=4)
