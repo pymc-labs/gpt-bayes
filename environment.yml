@@ -7,3 +7,6 @@ dependencies:
   - Flask
   - gunicorn
   - pymc-marketing
+  - celery
+  - redis-py
+  - redis-server

@@ -1,3 +1,0 @@
-[global]
-cxx=/app/.apt/usr/bin/g++
-gcc__cxxflags=-L/app/.apt/usr/lib/gcc/x86_64-linux-gnu/12

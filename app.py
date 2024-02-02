@@ -8,10 +8,72 @@ import json
 import logging
 import io
 
+from celery import Celery
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
+app.config['broker_url'] = 'redis://localhost:6379/0'
+app.config['result_backend'] = 'redis://localhost:6379/0'
+
+celery = Celery(app.name, broker=app.config['broker_url'])
+celery.conf.update(app.config)
+celery.conf.update(
+    worker_concurrency=1,  # Number of process workers
+    worker_pool='prefork',  # Use prefork (multiprocessing)
+    task_always_eager=False  # Ensure tasks are not run locally by the worker that started them
+)
+
+
+@celery.task(bind=True)
+def run_mmm_task(self, data):
+    try:
+        df = pd.read_json(io.StringIO(data["df"]), orient="split")
+
+        # Extract optional parameters from 'data'
+        date_column = data.get('date_column', 'date')
+        channel_columns = data.get('channel_columns', [])
+        adstock_max_lag = data.get('adstock_max_lag', 8)
+        yearly_seasonality = data.get('yearly_seasonality', 2)
+
+        # Define and fit the MMM model
+        mmm = DelayedSaturatedMMM(
+            date_column=date_column,
+            channel_columns=channel_columns,
+            adstock_max_lag=adstock_max_lag,
+            yearly_seasonality=yearly_seasonality,
+        )
+        X = df.drop('sales', axis=1)
+        y = df['sales']
+        mmm.fit(X, y, chains=1, cores=1)
+
+        # Extract and return summary statistics
+        summary = az.summary(mmm.fit_result)
+        summary_json = summary.to_json(orient='split')
+
+        return {"status": "completed", "summary": summary_json}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+
+@app.route('/run_mmm_async', methods=['POST'])
+def run_mmm_async():
+    task = run_mmm_task.apply_async(args=[request.get_json()])
+    return jsonify({"task_id": task.id})
+
+@app.route('/get_results', methods=['GET'])
+def get_results():
+    task_id = request.args.get('task_id')
+    task = run_mmm_task.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {"status": "pending"}
+    elif task.state != 'FAILURE':
+        response = task.result
+    else:
+        response = {"status": "failure", "error": str(task.info)}
+    return jsonify(response)
+
+
 
 @app.route('/run_dynamic_pymc_model', methods=['POST'])
 def run_dynamic_pymc_model():
