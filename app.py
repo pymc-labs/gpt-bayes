@@ -7,6 +7,7 @@ import numpy as np
 import json
 import logging
 import io
+import os
 
 from celery import Celery
 
@@ -163,4 +164,5 @@ def run_mmm():
     return jsonify({'status': 'Model executed successfully', 'summary': summary_json})
 
 if __name__ == '__main__':
-    app.run(threaded=False, workers=4)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)

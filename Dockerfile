@@ -18,4 +18,6 @@ RUN chmod +x $APP_HOME/start.sh
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
 EXPOSE 5000
+EXPOSE 8080
+
 CMD ["./start.sh"]
