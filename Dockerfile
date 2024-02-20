@@ -2,6 +2,7 @@ FROM mambaorg/micromamba:latest
 
 ENV APP_HOME /app
 ENV PORT 5000
+ENV JAX_PLATFORM_NAME cpu
 
 WORKDIR $APP_HOME
 
