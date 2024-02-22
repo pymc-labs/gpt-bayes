@@ -3,10 +3,10 @@ channels:
   - conda-forge
 dependencies:
   - pymc
-  - numpyro
   - Flask
   - gunicorn
   - pymc-marketing
   - celery
   - redis-py
   - redis-server
+  - google-cloud-logging

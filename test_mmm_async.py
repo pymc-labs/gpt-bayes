@@ -3,6 +3,7 @@ import json
 import time
 import pandas as pd
 import numpy as np
+import sys
 
 def create_payload():
     # Number of weeks
@@ -40,12 +41,12 @@ def create_payload():
 
     return payload
 
-def test_async_mmm_run():
+def test_async_mmm_run(base_url):
     # Payload that includes data
     payload = create_payload()
 
     # Replace with your API endpoint for async run
-    run_url = "http://localhost:5001/run_mmm_async"
+    run_url = f"{base_url}/run_mmm_async"
 
     # Make a POST request to initiate the model run
     headers = {'Content-Type': 'application/json'}
@@ -56,9 +57,10 @@ def test_async_mmm_run():
 
     # Extract task_id
     task_id = response.json()["task_id"]
+    print(f"Got task_id {task_id}")
 
     # Polling URL
-    results_url = f"http://localhost:5001/get_results?task_id={task_id}"
+    results_url = f"{base_url}/get_results?task_id={task_id}"
 
     # Poll for results
     while True:
@@ -76,6 +78,22 @@ def test_async_mmm_run():
             break
         elif result_data["status"] == "pending":
             # Wait before polling again
-            time.sleep(2)
+            print("Pending...")
+            time.sleep(10)
 
-test_async_mmm_run()
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python test_script.py [local|deployed]")
+        sys.exit(1)
+
+    environment = sys.argv[1]
+    
+    if environment == "local":
+        base_url = "http://localhost:5001"
+    elif environment == "deployed":
+        base_url = "https://35.239.18.108" #"https://gpt-bayes-i66d5bzhua-uc.a.run.app"
+    else:
+        print("Invalid argument. Use 'local' or 'deployed'.")
+        sys.exit(1)
+
+    test_async_mmm_run(base_url)
