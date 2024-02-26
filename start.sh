@@ -12,3 +12,4 @@ nginx -g 'daemon on;'
 
 # Start the Flask application with Gunicorn on the Cloud Run port
 exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
+
