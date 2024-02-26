@@ -10,5 +10,3 @@ dependencies:
   - redis-py
   - redis-server
   - google-cloud-logging
-  - nginx
-  - certbot-nginx

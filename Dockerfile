@@ -4,6 +4,19 @@ ENV APP_HOME /app
 ENV PORT 5000
 ENV JAX_PLATFORM_NAME cpu
 
+USER root
+RUN apt-get update && DEBIAN_FRONTEND=“noninteractive” apt-get install -y --no-install-recommends \
+    nginx \
+    certbot \
+    python3-certbot-nginx \
+    sudo \
+    && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN chown -R $MAMBA_USER /var/lib/nginx /var/log/nginx
+
+USER $MAMBA_USER
+
 WORKDIR $APP_HOME
 
 COPY . ./

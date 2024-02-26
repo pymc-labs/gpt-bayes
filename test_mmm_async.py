@@ -89,9 +89,9 @@ if __name__ == "__main__":
     environment = sys.argv[1]
     
     if environment == "local":
-        base_url = "http://localhost:5001"
+        base_url = "http://localhost"
     elif environment == "deployed":
-        base_url = "https://35.239.18.108" #"https://gpt-bayes-i66d5bzhua-uc.a.run.app"
+        base_url = "http://35.238.16.31:5000" #"https://gpt-bayes-i66d5bzhua-uc.a.run.app"
     else:
         print("Invalid argument. Use 'local' or 'deployed'.")
         sys.exit(1)
