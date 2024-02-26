@@ -1,5 +1,0 @@
-build-essential
-libstdc++-12-dev
-g++
-g++-11
-libopenblas-dev
