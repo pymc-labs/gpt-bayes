@@ -42,7 +42,7 @@ List Container-Optimized OS (COS) image names:
 gcloud compute images list --project cos-cloud --no-standard-images
 ```
 
-Deploy
+Deploy:
 
 ```bash
 gcloud compute instances create instance-name \
