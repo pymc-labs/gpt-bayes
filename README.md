@@ -33,3 +33,25 @@ gcloud builds submit
 
 This process will build a Docker container, push it to Google Artifact Registry (GAR).
 This doesn't deploy to Google Compute Engine (GCE).
+
+## Deploy to Google Compute Engine (GCE)
+
+List Container-Optimized OS (COS) image names:
+
+```bash
+gcloud compute images list --project cos-cloud --no-standard-images
+```
+
+Deploy
+
+```bash
+gcloud compute instances create instance-name \
+ --machine-type e2-standard-4 \
+ --boot-disk-size 20GB \
+ --image image-name \
+ --image-project cos-cloud \
+ --zone us-central1 \
+ --metadata container-image=your-container-image-name \
+ --tags http-server \
+ --firewall-create allow-http
+```
