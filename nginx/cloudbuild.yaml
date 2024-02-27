@@ -1,0 +1,43 @@
+steps:
+    # Build the container image
+    - id: build image
+      name: gcr.io/cloud-builders/docker
+      args:
+          - build
+          - -t
+          - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+          - ${_SERVICE_FOLDER}
+
+    # Push the container image to Artifact Registry
+    - id: push image
+      name: gcr.io/cloud-builders/docker
+      args:
+          - push
+          - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+
+    # Deploy container image to Cloud Run
+    - id: deploy image
+      name: google/cloud-sdk
+      entrypoint: gcloud
+      args:
+          - run
+          - deploy
+          - ${_SERVICE_NAME}
+          - --image
+          - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+          - --region
+          - ${_REGION}
+          - --memory
+          - 128Mi
+          - --timeout
+          - '1800'
+          - --allow-unauthenticated
+
+images:
+    - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+
+substitutions:
+    _SERVICE_FOLDER: .
+    _REPO_NAME: gcr2gce-proxy # Name of Google Artifact Registry (GAR)'s repo
+    _SERVICE_NAME: gcr2gce-proxy # Name of Cloud Run Service
+    _REGION: us-central1
