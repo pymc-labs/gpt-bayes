@@ -52,7 +52,7 @@ def run_mmm_task(self, data):
     try:
         logging.info("Starting run_mmm_task")
 
-        df = pd.read_json(io.StringIO(data["df"]), orient="split")
+        df = pd.read_json(io.StringIO(data["df"]))
         logging.debug(f"DataFrame loaded with {len(df)} rows.")
 
         # Extract optional parameters from 'data'

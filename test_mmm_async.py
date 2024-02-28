@@ -28,7 +28,7 @@ def create_payload():
     })
 
     # Convert DataFrame to JSON for payload
-    data_json = data.to_json(orient='split')
+    data_json = data.to_json()
 
     # Example payload
     payload = {
