@@ -28,14 +28,14 @@ def create_payload():
     })
 
     # Convert DataFrame to JSON for payload
-    data_json = data.to_json()
+    data_json = data.to_json(orient="split")
 
     # Example payload
     payload = {
         "df": data_json,
         "date_column": "date",
         "channel_columns": ["tv", "online"],
-        "adstock_max_lag": 8,
+        "adstock_max_lag": 2,
         "yearly_seasonality": 2
     }
 

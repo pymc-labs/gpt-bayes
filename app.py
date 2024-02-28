@@ -52,7 +52,7 @@ def run_mmm_task(self, data):
     try:
         logging.info("Starting run_mmm_task")
 
-        df = pd.read_json(io.StringIO(data["df"]))
+        df = pd.read_json(io.StringIO(data["df"]), orient="split")
         logging.debug(f"DataFrame loaded with {len(df)} rows.")
 
         # Extract optional parameters from 'data'
@@ -78,11 +78,11 @@ def run_mmm_task(self, data):
         logging.info("Model fitting completed.")
 
         # Extract and return summary statistics
-        summary = az.summary(mmm.fit_result)
-        summary_json = summary.to_json(orient='split')
+        summary = az.summary(mmm.fit_result, kind="stats")
+        summary_json = summary.to_json(orient="split")
         logging.info("Summary statistics extracted.")
 
-        logging.info("run_mmm_task completed successfully.")
+        logging.info(f"run_mmm_task completed successfully. summary_json={summary_json}")
         return {"status": "completed", "summary": summary_json}
     except Exception as e:
         logging.error(f"run_mmm_task failed: {str(e)}", exc_info=True)
@@ -98,6 +98,8 @@ def run_mmm_async():
         task = run_mmm_task.apply_async(args=[data])
         logging.info(f"Task submitted with ID: {task.id}")
 
+        # session[task.id] = "STARTED"
+
         return jsonify({"task_id": task.id})
     except Exception as e:
         logging.error(f"Error in run_mmm_async: {str(e)}", exc_info=True)
@@ -108,6 +110,9 @@ def get_results():
     try:
         task_id = request.args.get('task_id')
         logging.info(f"Received request for get_results with task_id: {task_id}")
+
+        # if task_id not in session:
+        #     return jsonify({'status': "failure", "error":'No such task'}), 404
 
         task = run_mmm_task.AsyncResult(task_id)
         if task.state == 'PENDING':
@@ -124,37 +129,6 @@ def get_results():
     except Exception as e:
         logging.error(f"Error in get_results: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
-def eval_model_code(model_code, data_dict):
-    # Dynamically execute the model code with data
-    try:
-        # Make data_dict available in the local scope for the exec function
-        local_scope = {'pm': pm, 'np': np, 'data_dict': data_dict}
-        with pm.Model() as model:
-            exec(model_code, globals(), local_scope)
-            idata = pm.sample(draws=100, chains=1, cores=1)
-            summary = pm.summary(idata)
-        # Log summary for debugging
-        logging.debug("Summary: %s", summary)
-        return {'summary': str(summary)}
-    except Exception as e:
-        logging.error("Error in eval_model_code: %s", e)
-        return {'error': str(e)}
-
-@app.route('/debug', methods=['POST'])
-def debug():
-    # Log the raw request data for debugging
-    logging.debug("Received request data: %s", request.data)
-
-    # Extract model code and data from the request
-    a = request.json.get('a')
-    b = request.json.get('b')
-    c = request.json.get('c')
-    logging.debug(f"{a=}\n{b=}\n{c=}")
-
-    return jsonify({"a": a, "b": b, "c": c})
-
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
