@@ -42,10 +42,18 @@ List Container-Optimized OS (COS) image names:
 gcloud compute images list --project cos-cloud --no-standard-images
 ```
 
+Update container:
+```bash
+gcloud compute instances update-container gpt-bayes \
+  --zone=us-central1-a \
+  --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes
+gcloud compute instances reset gpt-bayes --zone=us-central1-a
+```
+
 Deploy:
 
 ```bash
-gcloud compute instances create instance-name \
+gcloud compute instances create gpt-bayes \
  --machine-type e2-standard-4 \
  --boot-disk-size 20GB \
  --image image-name \
