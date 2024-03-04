@@ -1,0 +1,125 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+      "title": "PyMC-Marketing MMM API",
+      "description": "Asynchronous API for running Marketing Mix Modeling.",
+      "version": "v0.0.3"
+    },
+    "servers": [
+      {
+        "url": "https://gcr2gce-proxy-i66d5bzhua-uc.a.run.app"
+      }
+    ],
+    "paths": {
+      "/run_mmm_async": {
+        "post": {
+          "description": "Initiates an asynchronous MMM model run.",
+          "operationId": "runMMMAsync",
+          "requestBody": {
+            "description": "Data and parameters for the MMM model.",
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "df": {
+                      "type": "string",
+                      "description": "Data in JSON format for the model."
+                    },
+                    "date_column": {
+                      "type": "string",
+                      "default": "date",
+                      "description": "Name of the date column in data."
+                    },
+                    "channel_columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "List of channel column names."
+                    },
+                    "adstock_max_lag": {
+                      "type": "integer",
+                      "default": 8,
+                      "description": "Maximum lag for adstock calculation."
+                    },
+                    "yearly_seasonality": {
+                      "type": "integer",
+                      "default": 2,
+                      "description": "Yearly seasonality factor."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Model run initiated successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "task_id": {
+                        "type": "string",
+                        "description": "Unique ID for the initiated task."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/get_results": {
+        "get": {
+          "description": "Retrieves the results of an MMM model run.",
+          "operationId": "getMMMResults",
+          "parameters": [
+            {
+              "name": "task_id",
+              "in": "query",
+              "required": true,
+              "description": "The task ID of the MMM model run.",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Status of the model execution.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "description": "Status of the model execution."
+                      },
+                      "summary": {
+                        "type": "string",
+                        "description": "JSON string of summary statistics, present if status is 'completed'."
+                      },
+                      "error": {
+                        "type": "string",
+                        "description": "Error message, present if status is 'failed'."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {}
+    }
+  }
+  
