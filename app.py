@@ -11,10 +11,12 @@ import io
 import os
 from celery import Celery
 
+__version__ = "0.3"
+
 running_in_google_cloud = os.environ.get('RUNNING_IN_GOOGLE_CLOUD', 'False').lower() == 'true'
 
 # Configure standard logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
 if running_in_google_cloud:
@@ -46,6 +48,7 @@ celery.conf.update(
     task_always_eager=False  # Ensure tasks are not run locally by the worker that started them
 )
 
+logging.info(f"App started. Version: {__version__}")
 
 @celery.task(bind=True)
 def run_mmm_task(self, data):
@@ -84,12 +87,13 @@ def run_mmm_task(self, data):
                                 "likelihood_sigma",
                                 "beta_channel",
                                 "alpha",
-                                "lam",], 
+                                "lam",],
                             kind="stats")
         summary_json = summary.to_json(orient="split")
         logging.info("Summary statistics extracted.")
 
-        logging.info(f"run_mmm_task completed successfully. summary_json={summary_json}")
+        logging.info("run_mmm_task completed successfully.")
+        logging.debug(f"summary_json={summary_json}")
         return {"status": "completed", "summary": summary_json}
     except Exception as e:
         logging.error(f"run_mmm_task failed: {str(e)}\nJSON data: {data}", exc_info=True)

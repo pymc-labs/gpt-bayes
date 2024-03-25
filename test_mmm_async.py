@@ -117,7 +117,7 @@ if __name__ == "__main__":
     if environment == "local":
         base_url = "http://localhost:5001"
     elif environment == "deployed":
-        base_url = "https://gcr2gce-proxy-i66d5bzhua-uc.a.run.app"
+        base_url = "https://nextgen-mmm.pymc-labs.com"
     else:
         print("Invalid argument. Use 'local' or 'deployed'.")
         sys.exit(1)

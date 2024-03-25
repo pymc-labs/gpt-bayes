@@ -46,7 +46,7 @@ Update container:
 ```bash
 gcloud compute instances update-container gpt-bayes \
   --zone=us-central1-a \
-  --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes
+  --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
 gcloud compute instances reset gpt-bayes --zone=us-central1-a
 ```
 
