@@ -44,10 +44,11 @@ gcloud compute images list --project cos-cloud --no-standard-images
 
 Update container:
 ```bash
+gcloud compute ssh gpt-bayes --zone us-central1-a --command 'docker system prune -f -a'
+
 gcloud compute instances update-container gpt-bayes \
   --zone=us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
-gcloud compute instances reset gpt-bayes --zone=us-central1-a
 ```
 
 Deploy:
