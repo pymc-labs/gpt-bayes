@@ -78,14 +78,21 @@ def run_mmm_task(self, data):
         logging.info("Model fitting completed.")
 
         # Extract and return summary statistics
-        summary = az.summary(mmm.fit_result, kind="stats")
+        summary = az.summary(mmm.fit_result, 
+                             var_names=[
+                                "intercept",
+                                "likelihood_sigma",
+                                "beta_channel",
+                                "alpha",
+                                "lam",], 
+                            kind="stats")
         summary_json = summary.to_json(orient="split")
         logging.info("Summary statistics extracted.")
 
         logging.info(f"run_mmm_task completed successfully. summary_json={summary_json}")
         return {"status": "completed", "summary": summary_json}
     except Exception as e:
-        logging.error(f"run_mmm_task failed: {str(e)}", exc_info=True)
+        logging.error(f"run_mmm_task failed: {str(e)}\nJSON data: {data}", exc_info=True)
         return {"status": "failed", "error": str(e)}
 
 @app.route('/run_mmm_async', methods=['POST'])
