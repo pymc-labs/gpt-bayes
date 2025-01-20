@@ -2,11 +2,12 @@ name: base
 channels:
   - conda-forge
 dependencies:
-  - pymc
-  - Flask
-  - gunicorn
-  - pymc-marketing
-  - celery
-  - redis-py
-  - redis-server
-  - google-cloud-logging
+  - python=3.12
+  - pymc=5.16.1
+  - Flask=3.0.3
+  - gunicorn=22.0.0
+  - pymc-marketing=0.10.0
+  - celery=4.4.0 
+  - redis=4.6.0
+  - google-cloud-logging=3.11.3
+  - redis-server=7.4.0
