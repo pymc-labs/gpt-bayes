@@ -64,3 +64,67 @@ gcloud compute instances create gpt-bayes \
  --tags http-server \
  --firewall-create allow-http
 ```
+
+# Local Development Setup
+
+### 1. Create Conda Environment
+
+First, create a conda environment using the provided `environment.yml` file:
+
+```bash
+conda env create -f environment.yml
+```
+
+Or if you prefer using mamba (faster alternative):
+
+```bash
+mamba env create -f environment.yml
+```
+
+Activate the environment:
+```bash
+conda activate base
+```
+
+### 2. Local Testing Setup
+
+To test the application locally, follow these steps:
+
+1. Start the Redis server (installed via conda):
+```bash
+redis-server
+```
+
+2. Start the Celery worker (in a new terminal):
+```bash
+celery -A app.celery worker --loglevel=info
+```
+
+3. Start the Flask application (in another terminal):
+```bash
+python app.py --port 5001
+```
+
+4. Run the test suite:
+```bash
+python test_mmm_async.py local
+```
+
+The test will:
+- Generate sample marketing mix modeling data
+- Submit it to the local API endpoint
+- Poll for results until completion
+- Display the model summary statistics
+
+Note: The test script accepts either `local` or `deployed` as an argument to switch between testing the local instance (`http://localhost:5001`) or the deployed version.
+
+### 3. Troubleshooting
+
+Common issues and solutions:
+- If Redis fails to start, ensure no other Redis instance is running: `sudo service redis-server stop`
+- If the Celery worker fails to connect, verify Redis is running on port 6379
+- If the test script fails, ensure all three components (Redis, Celery, Flask) are running
+- For port conflicts, you can modify the Flask port (default: 5001) in the app.py startup command
+
+
+
