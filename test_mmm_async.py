@@ -95,7 +95,7 @@ def test_async_mmm_run(base_url):
 
         if result_data["status"] == "completed":
             # Handle completed task
-            print("Task completed:", result_data)
+            print("Task completed:!!!")
             # Perform additional assertions here
             break
         elif result_data["status"] == "failed":

@@ -14,6 +14,7 @@ import logging
 from google.cloud import logging as google_logging
 
 import os
+import io
 
 
 __version__ = "0.3"
@@ -52,7 +53,7 @@ app.config['result_backend'] = 'redis://localhost:6379/0'
 celery = Celery(app.name, broker=app.config['broker_url'])
 celery.conf.update(app.config)
 celery.conf.update(
-    worker_pool='prefork',  # Use prefork (multiprocessing)
+    worker_pool='threads',  # Use prefork (multiprocessing)
     task_always_eager=False  # Ensure tasks are not run locally by the worker that started them
 )
 
@@ -93,16 +94,13 @@ def run_mmm_task(self, data):
             yearly_seasonality=yearly_seasonality,
         )
         logging.info("MMM model defined.")
-
-        # Get model graph before fitting
-
-        model_graph = mmm.model
-        logging.debug("Model graph structure: %s", model_graph)
+        
         X = df.drop('sales', axis=1)
         y = df['sales']
 
         logging.debug("Starting model fitting.")
 
+        # mmm.fit(X, y, random_seed=42, cores=1)
         mmm.fit(X, y)
         logging.info("Model fitting completed.")
         
@@ -166,5 +164,10 @@ def get_results():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('--port', default=5001, type=int)
+    args = parser.parse_args()
+    
+    # Update this line to use args.port instead of hardcoded 8080
+    app.run(host='0.0.0.0', port=args.port, debug=False)
