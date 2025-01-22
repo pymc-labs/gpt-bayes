@@ -10,7 +10,11 @@ COPY . ./
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yaml
 
 RUN micromamba install -y -n base -f /tmp/env.yaml && \
-    micromamba clean --all --yes
+    micromamba clean --all --yes && \
+    mkdir -p /opt/conda/var/db && \
+    chown $MAMBA_USER:$MAMBA_USER /opt/conda/var/db && \
+    mkdir -p /opt/conda/var/db/redis && \
+    chown $MAMBA_USER:$MAMBA_USER /opt/conda/var/db/redis
 
 # Copy the start script
 COPY --chown=$MAMBA_USER:$MAMBA_USER start.sh $APP_HOME/start.sh
