@@ -51,8 +51,7 @@ gcloud compute instances update-container gpt-bayes \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
 ```
 
-Deploy:
-
+Create Machine:
 ```bash
 gcloud compute instances create gpt-bayes \
  --machine-type e2-standard-4 \
@@ -64,6 +63,17 @@ gcloud compute instances create gpt-bayes \
  --tags http-server \
  --firewall-create allow-http
 ```
+
+SSH into machine:
+```bash
+gcloud compute ssh gpt-bayes --zone us-central1-a
+```
+
+Once in the machine, you can run the following command to attach to the container:
+```bash
+docker attach CONTAINER_ID
+```
+
 
 # Local Development Setup
 
@@ -109,6 +119,8 @@ python app.py --port 5001
 ```bash
 python test_mmm_async.py local
 ```
+
+
 
 The test will:
 - Generate sample marketing mix modeling data
