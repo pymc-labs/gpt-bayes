@@ -11,8 +11,8 @@ from pymc_marketing.mmm import (
 )
 
 import logging
-from google.cloud import logging as google_logging
 
+import pickle
 import os
 import io
 
@@ -22,7 +22,11 @@ __version__ = "0.3"
 running_in_google_cloud = os.environ.get('RUNNING_IN_GOOGLE_CLOUD', 'False').lower() == 'true'
 
 # Configure standard logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging at the start of your app
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG to see debug messages
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger()
 
 if running_in_google_cloud:
@@ -54,10 +58,20 @@ celery = Celery(app.name, broker=app.config['broker_url'])
 celery.conf.update(app.config)
 celery.conf.update(
     worker_pool='threads',  # Use prefork (multiprocessing)
-    task_always_eager=False  # Ensure tasks are not run locally by the worker that started them
+    task_always_eager=False,  # Ensure tasks are not run locally by the worker that started them
+    task_time_limit=600,  # Add 1-hour timeout
+    broker_connection_retry_on_startup=True,  # Retry broker connection on startup
+    worker_redirect_stdouts=False,  # Don't redirect stdout/stderr
+    worker_redirect_stdouts_level='DEBUG'  # Log level for stdout/stderr
 )
 
 logging.info("App started. Version: %s", __version__)
+
+# Create a data directory if it doesn't exist
+DATA_DIR = "/tmp/mmm_data"
+os.makedirs(DATA_DIR, exist_ok=True)
+# Ensure proper permissions (readable/writable by all users)
+os.chmod(DATA_DIR, 0o777)
 
 @celery.task(bind=True)
 def run_mmm_task(self, data):
@@ -70,9 +84,27 @@ def run_mmm_task(self, data):
     """
     try:
         logging.info("Starting run_mmm_task")
+        
+        # Use the dedicated data directory
+        data_file = os.path.join(DATA_DIR, f"data_{self.request.id}.pkl")
+        
+        # Save the data to file
+        with open(data_file, "wb") as f:
+            pickle.dump(data, f)
+        
+        # Ensure the file is readable/writable
+        os.chmod(data_file, 0o666)
 
-        df = pd.read_json(io.StringIO(data["df"]), orient="split")
-        logging.debug("DataFrame loaded with %d rows.", len(df))
+        try:
+            df = pd.read_json(io.StringIO(data["df"]), orient="split")
+        except Exception as e:
+            logging.info("Error reading JSON data attempting to read CSV: %s", str(e), exc_info=True)
+            df = pd.read_csv(io.StringIO(data["df"]))            
+
+
+
+        logging.info("DataFrame loaded with shape=%s and columns=%s", df.shape, df.columns)
+        logging.info("First 5 rows:\n%s", df.head(5))
 
         # Extract optional parameters from 'data'
         date_column = data.get('date_column', 'date')
@@ -85,6 +117,8 @@ def run_mmm_task(self, data):
 
         # Define and fit the MMM model
         # import ipdb; ipdb.set_trace()
+
+        logging.debug("Creating MMM model")
         mmm = MMM(
             adstock=GeometricAdstock(l_max=int(adstock_max_lag)),
             saturation=LogisticSaturation(),
@@ -135,7 +169,7 @@ def run_mmm_async():
 
         return jsonify({"task_id": task.id})
     except Exception as e:
-        logging.error(f"Error in run_mmm_async: {str(e)}", exc_info=True)
+        logging.error("Error in run_mmm_async: %s", str(e), exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/get_results', methods=['GET'])
@@ -160,7 +194,7 @@ def get_results():
         
         return jsonify(response)
     except Exception as e:
-        logging.error(f"Error in get_results: {str(e)}", exc_info=True)
+        logging.error("Error in get_results: %s", str(e), exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
