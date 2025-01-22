@@ -73,6 +73,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # Ensure proper permissions (readable/writable by all users)
 os.chmod(DATA_DIR, 0o777)
 
+
+
+
 @celery.task(bind=True)
 def run_mmm_task(self, data):
     """Run Marketing Mix Model analysis task.
@@ -83,8 +86,9 @@ def run_mmm_task(self, data):
         dict: Model summary statistics or error message
     """
     try:
-        logging.info("Starting run_mmm_task")
+        logging.info("Starting run_mmm_task here!!")
         
+
         # Use the dedicated data directory
         data_file = os.path.join(DATA_DIR, f"data_{self.request.id}.pkl")
         
@@ -102,9 +106,11 @@ def run_mmm_task(self, data):
             df = pd.read_csv(io.StringIO(data["df"]))            
 
 
-
         logging.info("DataFrame loaded with shape=%s and columns=%s", df.shape, df.columns)
         logging.info("First 5 rows:\n%s", df.head(5))
+
+        # Check if DataFrame has at least 15 rows
+        if len(df) < 15: raise ValueError(f"DataFrame must have at least 15 rows for reliable model fitting. Current shape: {df.shape}")
 
         # Extract optional parameters from 'data'
         date_column = data.get('date_column', 'date')
@@ -114,6 +120,13 @@ def run_mmm_task(self, data):
         control_columns = data.get('control_columns', None)
         logging.debug("Parameters extracted: date_column=%s, channel_columns=%s, adstock_max_lag=%d, yearly_seasonality=%d, control_columns=%s",
                      date_column, channel_columns, adstock_max_lag, yearly_seasonality, control_columns)
+
+        def is_valid_dates(df, column):
+            return pd.to_datetime(df[column], format='%Y-%m-%d', errors='coerce').notna()
+
+        if not is_valid_dates(df, date_column):
+            raise ValueError(f"Date column must be in YYYY-MM-DD format (e.g. 2023-12-31). Found values like: {df[date_column].iloc[0]} with dtype: {df[date_column].dtype}")
+
 
         # Define and fit the MMM model
         # import ipdb; ipdb.set_trace()
