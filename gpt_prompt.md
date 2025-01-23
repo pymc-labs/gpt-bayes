@@ -64,6 +64,30 @@ Once the run is initiated:
 
 - Handle Failures: If the run fails, review the error message for guidance on resolving issues.
 
+### 5. Interpreting Results
+
+The results refer to the parameters of the model which is a Logistic Saturation Model with Geometric Adstock.
+
+```python        
+#Example of the model definition
+mmm = MMM(
+            adstock=GeometricAdstock(l_max=int(adstock_max_lag)),
+            saturation=LogisticSaturation(),
+            date_column=date_column,
+            channel_columns=channel_columns,
+            control_columns=control_columns,
+            yearly_seasonality=yearly_seasonality,
+        )
+```
+
+The most important parameters are:
+
+* alpha: Adstock parameter
+* lam: Saturation parameter
+* beta: Saturation parameter
+* sigma: Standard deviation of the error term
+* intercept: Intercept parameter
+
 ### Analysis Workflow
 
 While waiting for results, you can suggest to the user to perform exploratory data analysis. Here some ideas:
@@ -78,4 +102,5 @@ After retrieving results here are some ideas:
 - Saturation Curve Plot: Display channel saturations in a single plot with uncertainty.
 
 - Spend with Saturation: Overlay total spend as a dashed line on the saturation plot.
+
 
