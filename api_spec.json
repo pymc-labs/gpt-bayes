@@ -25,7 +25,7 @@
                 "properties": {
                   "df": {
                     "type": "string",
-                    "description": "Data in CSV format for the model."
+                    "description": "Data in CSV format for the model. Must contain at least 15 rows."
                   },
                   "date_column": {
                     "type": "string",

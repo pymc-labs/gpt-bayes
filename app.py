@@ -122,7 +122,7 @@ def run_mmm_task(self, data):
                      date_column, channel_columns, adstock_max_lag, yearly_seasonality, control_columns)
 
         def is_valid_dates(df, column):
-            return pd.to_datetime(df[column], format='%Y-%m-%d', errors='coerce').notna()
+            return pd.to_datetime(df[column], format='%Y-%m-%d', errors='coerce').notna().all()
 
         if not is_valid_dates(df, date_column):
             raise ValueError(f"Date column must be in YYYY-MM-DD format (e.g. 2023-12-31). Found values like: {df[date_column].iloc[0]} with dtype: {df[date_column].dtype}")
@@ -154,14 +154,31 @@ def run_mmm_task(self, data):
         # Extract and return summary statistics
         summary = az.summary(mmm.fit_result)
         
-        #FIXME: returning this is could be a bit heavy if the summary is large, return the most important variables
-        summary_json = summary.to_json(orient="split")
+        # Filter only the most important statistics
+        important_params = summary[summary.index.str.contains('alpha|beta|sigma|intercept|lam', case=False)]
+        # Limit decimal places and convert to more compact format
+        important_params = important_params.round(4)
+        
+        summary_json = important_params.to_json(orient="split", double_precision=4)
         logging.info("Summary statistics extracted.")
+        logging.info("summary_json=%s", summary_json)
+        
+        # Add model metrics
+        response = {
+            "status": "completed",
+            "summary": summary_json,
+            # "model_info": {
+            #     "num_observations": len(df),
+            #     "channels": channel_columns,
+            #     "adstock_max_lag": adstock_max_lag,
+            #     "yearly_seasonality": yearly_seasonality
+            # }
+        }
 
         logging.info("run_mmm_task completed successfully.")
-        logging.debug("summary_json=%s", summary_json)
+        logging.debug("response=%s", response)
 
-        return {"status": "completed", "summary": summary_json}
+        return response
     
     except Exception as e:
         logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)

@@ -97,6 +97,7 @@ def test_async_mmm_run(base_url):
             # Handle completed task
             print("Task completed:!!!")
             # Perform additional assertions here
+            import pdb; pdb.set_trace()
             break
         elif result_data["status"] == "failed":
             # Handle failed task
