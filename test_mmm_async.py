@@ -2,51 +2,16 @@ import requests
 import json
 import time
 import pandas as pd
-import numpy as np
+
 import sys
-
-def create_payload():
-    # Number of weeks
-    n_weeks = 52
-
-    # Generate weekly dates
-    dates = pd.date_range(start='2023-01-01', periods=n_weeks, freq='W')
-
-    # Generate synthetic sales data (random for example purposes)
-    sales = np.random.randint(1000, 5000, size=n_weeks)
-
-    # Generate synthetic marketing spend data
-    tv_spend = np.random.randint(1000, 3000, size=n_weeks)
-    online_spend = np.random.randint(500, 2000, size=n_weeks)
-
-    # Create DataFrame
-    data = pd.DataFrame({
-        'date': dates,
-        'sales': sales,
-        'tv': tv_spend,
-        'online': online_spend
-    })
-
-    # Convert DataFrame to JSON for payload
-    data_json = data.to_json(orient="split")
-
-    # Example payload
-    payload = {
-        "df": data_json,
-        "date_column": "date",
-        "channel_columns": ["tv", "online"],
-        "adstock_max_lag": 2,
-        "yearly_seasonality": 2
-    }
-
-    return payload
+import io
 
 def create_payload_csv():
     # Load the user-uploaded data file
     data = pd.read_csv('mmm_example.csv')
     # Rename the 'y' column to 'sales' and select relevant columns
     data.rename(columns={'y': 'sales'}, inplace=True)
-    mmm_data = data[['date_week', 'sales', 'x1', 'x2']]
+    mmm_data = data[['date_week', 'sales', 'x1', 'x2', 'event_1', 'event_2', 't']]
 
     # Convert 'date_week' to datetime format
     mmm_data.loc[:, 'date_week'] = pd.to_datetime(mmm_data['date_week']).dt.strftime('%Y-%m-%d')
@@ -60,7 +25,8 @@ def create_payload_csv():
         "date_column": "date_week",
         "channel_columns": ["x1", "x2"],
         "adstock_max_lag": 2,
-        "yearly_seasonality": 8
+        "yearly_seasonality": 8,
+        "control_columns": ["event_1", "event_2", "t"]
     }
 
     return payload
@@ -95,9 +61,13 @@ def test_async_mmm_run(base_url):
 
         if result_data["status"] == "completed":
             # Handle completed task
-            print("Task completed:!!!")
+            
             # Perform additional assertions here
-            import pdb; pdb.set_trace()
+            summary = pd.read_json(io.StringIO(result_data["summary"]),orient='split')
+            print('--------------------------------')
+            print(summary)
+            print('--------------------------------')
+            print("Task completed:!!!")
             break
         elif result_data["status"] == "failed":
             # Handle failed task
