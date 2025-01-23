@@ -11,3 +11,5 @@ dependencies:
   - redis-server=7.4.0
   - vine=5.1.0
   - redis-py=4.5.0
+  - procps-ng
+

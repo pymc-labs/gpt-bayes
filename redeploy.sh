@@ -30,18 +30,23 @@ else
     gcloud compute scp --zone=us-central1-a --recurse ./*.py gpt-bayes:/tmp/
     
     # Then copy files into the container and restart services
-    gcloud compute ssh gpt-bayes --zone=us-central1-a --command '
-        CONTAINER_ID=$(docker ps --filter ancestor=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest -q) && \
-        if [ -z "$CONTAINER_ID" ]; then
-            echo "Error: Could not find running container"
+    gcloud compute ssh gpt-bayes --zone=us-central1-a --command "
+        CONTAINER_ID=\$(docker ps --filter ancestor=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest -q) && \
+        if [ -z \"\$CONTAINER_ID\" ]; then
+            echo \"Error: Could not find running container\"
             exit 1
         fi && \
-        echo "Updating container: $CONTAINER_ID" && \
-        docker cp /tmp/*.py $CONTAINER_ID:/app/ && \
-        docker exec $CONTAINER_ID pkill -f "celery" && \
-        docker exec $CONTAINER_ID pkill -f "gunicorn" && \
-        docker exec -w /app $CONTAINER_ID ./start.sh
-    '
+        echo \"Updating container: \$CONTAINER_ID\" && \
+        cd /tmp && \
+        for file in *.py; do
+            [ -f \"\$file\" ] && docker cp \"\$file\" \"\$CONTAINER_ID:/app/\"
+        done && \
+        # Kill existing processes using pkill instead of killall
+        docker exec \$CONTAINER_ID micromamba run -n base pkill -9 celery || true && \
+        docker exec \$CONTAINER_ID micromamba run -n base pkill -9 gunicorn || true && \
+        # Start the application in detached mode
+        docker exec -d -w /app \$CONTAINER_ID micromamba run -n base ./start.sh
+    "
 fi
 
 echo "Deployment complete!"
