@@ -155,11 +155,11 @@ def run_mmm_task(self, data):
         summary = az.summary(mmm.fit_result)
         
         # Filter only the most important statistics
-        important_params = summary[summary.index.str.contains('alpha|beta|sigma|intercept|lam', case=False)]
+        important_params = summary[summary.index.str.contains('alpha|beta|sigma|intercept|lam|gamma_control', case=False)]
         # Limit decimal places and convert to more compact format
-        important_params = important_params.round(4)
+        important_params = important_params.round(5)
         
-        summary_json = important_params.to_json(orient="split", double_precision=4)
+        summary_json = important_params.to_json(orient="split", double_precision=5)
         logging.info("Summary statistics extracted.")
         logging.info("summary_json=%s", summary_json)
         
