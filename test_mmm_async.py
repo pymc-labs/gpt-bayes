@@ -8,7 +8,7 @@ import io
 
 def create_payload_csv():
     # Load the user-uploaded data file
-    data = pd.read_csv('mmm_example.csv')
+    data = pd.read_csv('test-data/mmm_example.csv')
     # Rename the 'y' column to 'sales' and select relevant columns
     data.rename(columns={'y': 'sales'}, inplace=True)
     mmm_data = data[['date_week', 'sales', 'x1', 'x2', 'event_1', 'event_2', 't']]

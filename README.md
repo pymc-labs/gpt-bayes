@@ -1,57 +1,110 @@
-# Deploying Your Application with Google Cloud Build
+# GPT-Bayes Webapp
 
-This repository provides the necessary configurations for deploying your application using Google Cloud Build.
+A cloud-based Marketing Mix Modeling (MMM) solution deployed on Google Cloud Platform.
 
-## Deploy NGINX Reverse Proxy
+## Quick Deployment
+```bash
+./deploy.sh  # Deploy the latest version to production
+```
 
-To deploy the NGINX Reverse Proxy, navigate to the `nginx` directory and execute the following commands:
+## System Architecture
+
+GPT-Bayes consists of two main components:
+
+1. **MMM Agent Alpha** - A specialized GPT model with API integration
+   - Interface: [MMM Agent Alpha](https://chatgpt.com/g/g-67927a520a9481919cc163eb51bf1a3d-mmm-agent-alpha-2-0)
+   - Authentication: social@pymc-labs.com
+   - Function: Provides user interface for MMM analysis
+
+2. **Backend Service**
+   - Production URL: https://nextgen-mmm.pymc-labs.com
+   - Function: Handles model fitting and parameter management via API endpoints
+   - Infrastructure: Hosted on Google Cloud Engine (GCE) under the `gpt-bayes` project
+
+## Project Structure
+
+### Core Services
+- `app.py` - Main Flask application
+- `test_mmm_async.py` - Local API testing utility
+
+### Infrastructure Configuration
+- `nginx/` - NGINX reverse proxy settings
+- `dockerfile` - Container specifications
+- `start.sh` - Container initialization
+- `deploy.sh` - Deployment automation
+- `environment.yml` - Development environment specifications
+
+### AI Agent Settings
+- `gpt-agent/gpt_prompt.md` - System instructions
+- `gpt-agent/api_spec.json` - API specifications
+- `gpt-agent/knowledge/` - Reference documentation
+- `gpt-agent/privacy_policy.md` - Data handling guidelines
+
+### Testing Resources
+- `test-data/` - Example datasets
+
+## Deployment Guide
+
+The application runs on Google Compute Engine (GCE) under the `gpt-bayes` project, accessible at `https://nextgen-mmm.pymc-labs.com`.
+
+### Standard Deployment
+
+Use `deploy.sh` to update the application. This script handles:
+- Updating the container in Google Artifact Registry (GAR)
+- Deploying to the production environment
 
 ```bash
-cd nginx
+./deploy.sh
+```
+
+### Server Management
+
+Access the production server:
+```bash
+gcloud compute ssh gpt-bayes --zone us-central1-a
+```
+
+Container management commands:
+```bash
+# List containers
+docker ps -a
+
+# Monitor container logs
+docker attach CONTAINER_ID
+
+# Access container shell
+docker exec -it CONTAINER_ID /bin/bash
+```
+
+
+### Container Registry Management
+
+Build and publish to Google Artifact Registry:
+```bash
 gcloud builds submit
 ```
 
-This process will build a Docker container, push it to Google Artifact Registry (GAR), and deploy it to Cloud Run.
+Note: This updates the container image but doesn't affect the production deployment.
 
-## Modify IP in NGINX Reverse Proxy
+### Server Instance Management
 
-To update the IP address in the NGINX Reverse Proxy configuration, navigate to the `nginx` directory, edit the `nginx.conf` file, and modify the value of the IP in the `proxy_pass` directive:
-
-```bash
-cd nginx
-# Open nginx.conf in your preferred text editor and update the IP
-# Example: proxy_pass http://35.208.203.115:5000;
-```
-
-## Build and Push Webapp Container to Google Artifact Registry (GAR)
-
-Execute the following command to build and push the web application container to Google Artifact Registry:
-
-```bash
-gcloud builds submit
-```
-
-This process will build a Docker container, push it to Google Artifact Registry (GAR).
-This doesn't deploy to Google Compute Engine (GCE).
-
-## Deploy to Google Compute Engine (GCE)
-
-List Container-Optimized OS (COS) image names:
-
+View available Container-Optimized OS images:
 ```bash
 gcloud compute images list --project cos-cloud --no-standard-images
 ```
 
-Update container:
+Update production container:
 ```bash
+# Clear existing containers
 gcloud compute ssh gpt-bayes --zone us-central1-a --command 'docker system prune -f -a'
 
+# Deploy new container
 gcloud compute instances update-container gpt-bayes \
   --zone=us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
 ```
 
-Create Machine:
+Create new server instance:
 ```bash
 gcloud compute instances create gpt-bayes \
  --machine-type e2-standard-4 \
@@ -64,79 +117,65 @@ gcloud compute instances create gpt-bayes \
  --firewall-create allow-http
 ```
 
-SSH into machine:
+### NGINX Configuration (Advanced)
+
+Deploy NGINX reverse proxy updates:
 ```bash
-gcloud compute ssh gpt-bayes --zone us-central1-a
+cd nginx
+gcloud builds submit
 ```
 
-Once in the machine, you can run the following command to attach to the container:
+Update backend IP address:
+1. Navigate to `nginx/nginx.conf`
+2. Modify the `proxy_pass` directive with the new IP
+3. Example: `proxy_pass http://35.208.203.115:5000;`
+
+## Local Development
+
+### 1. Environment Setup
+
+Create development environment:
 ```bash
-docker attach CONTAINER_ID
-```
-
-
-# Local Development Setup
-
-### 1. Create Conda Environment
-
-First, create a conda environment using the provided `environment.yml` file:
-
-```bash
+# Using conda
 conda env create -f environment.yml
-```
 
-Or if you prefer using mamba (faster alternative):
-
-```bash
+# Using mamba (faster)
 mamba env create -f environment.yml
-```
 
-Activate the environment:
-```bash
+# Activate environment
 conda activate base
 ```
 
-### 2. Local Testing Setup
+### 2. Development Server
 
-To test the application locally, follow these steps:
+Launch the development stack:
 
-1. Start the Redis server (installed via conda):
+1. Start Redis:
 ```bash
 redis-server
 ```
 
-2. Start the Celery worker (in a new terminal):
+2. Start Celery worker (new terminal):
 ```bash
 celery -A app.celery worker --loglevel=info
 ```
 
-3. Start the Flask application (in another terminal):
+3. Start Flask (new terminal):
 ```bash
 python app.py --port 5001
 ```
 
-4. Run the test suite:
+4. Run tests:
 ```bash
+# Test local instance
 python test_mmm_async.py local
+
+# Test production instance
+python test_mmm_async.py deployed
 ```
 
-
-
-The test will:
-- Generate sample marketing mix modeling data
-- Submit it to the local API endpoint
-- Poll for results until completion
-- Display the model summary statistics
-
-Note: The test script accepts either `local` or `deployed` as an argument to switch between testing the local instance (`http://localhost:5001`) or the deployed version.
-
-### 3. Troubleshooting
-
-Common issues and solutions:
-- If Redis fails to start, ensure no other Redis instance is running: `sudo service redis-server stop`
-- If the Celery worker fails to connect, verify Redis is running on port 6379
-- If the test script fails, ensure all three components (Redis, Celery, Flask) are running
-- For port conflicts, you can modify the Flask port (default: 5001) in the app.py startup command
-
-
-
+The test suite:
+- Generates sample MMM data
+- Submits to specified API endpoint
+- Monitors result generation
+- Displays model analytics
