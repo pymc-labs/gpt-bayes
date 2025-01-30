@@ -51,9 +51,17 @@ GPT-Bayes consists of two main components:
 
 The application runs on Google Compute Engine (GCE) under the `gpt-bayes` project, accessible at `https://nextgen-mmm.pymc-labs.com` (production) and `https://dev-nextgen-mmm.pymc-labs.com` (development).
 
+### Build and Push Docker Image
+
+Build and push the Docker image to Google Artifact Registry (GAR).
+```bash
+./build.sh production # Build and publish to production
+./build.sh development # Build and publish to development
+```
+
 ### Standard Deployment
 
-Use `deploy.sh` to update the application. This script handles:
+Once the Docker image is built and pushed to GAR, use `deploy.sh` to update the application. This script handles:
 - Updating the container in Google Artifact Registry (GAR)
 - Deploying to the specified environment
 
