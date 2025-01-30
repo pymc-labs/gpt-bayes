@@ -12,4 +12,5 @@ dependencies:
   - vine=5.1.0
   - redis-py=4.5.0
   - procps-ng
+  - yq=2.12.0
 

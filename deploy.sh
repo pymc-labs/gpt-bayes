@@ -12,7 +12,7 @@ ENVIRONMENT=$1
 # Function to read config value
 get_config() {
     local key=$1
-    yq eval ".$ENVIRONMENT.$key" config.yaml
+    yq ".$ENVIRONMENT.$key" config.yaml
 }
 
 # Get configuration values
