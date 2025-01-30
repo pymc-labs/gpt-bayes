@@ -1,0 +1,12 @@
+production:
+  instanceName: "gpt-bayes"
+  serverName: "nextgen-mmm.pymc-labs.com"
+  ipAddress: "35.208.203.115"
+  port: "5000"
+  region: "us-central1"
+development:
+  instanceName: "dev-gpt-bayes"
+  serverName: "dev-nextgen-mmm.pymc-labs.com"
+  ipAddress: ""
+  port: "5000"
+  region: "us-central1"
