@@ -20,6 +20,3 @@ images:
 
 substitutions:
     _SERVICE_FOLDER: .
-    _REPO_NAME: gpt-bayes # Name of Google Artifact Registry (GAR)'s repo
-    _SERVICE_NAME: gpt-bayes # Name of Cloud Run Service
-    _REGION: us-central1

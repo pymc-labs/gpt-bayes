@@ -12,13 +12,13 @@ ENVIRONMENT=$1
 # Function to read config value
 get_config() {
     local key=$1
-    yq ".$ENVIRONMENT.$key" config.yaml
+    yq ".$ENVIRONMENT.$key" config.yaml | tr -d '"'
 }
 
 # Get configuration values
 INSTANCE_NAME=$(get_config "instanceName")
-ZONE=$(get_config "region")-a
+REGION=$(get_config "region")
 
-echo $INSTANCE_NAME
+echo "Building $INSTANCE_NAME in $REGION"
 
-gcloud builds submit --config cloudbuild.yaml --substitutions=_REPO_NAME=$INSTANCE_NAME,_SERVICE_NAME=$INSTANCE_NAME,_REGION=$ZONE
+gcloud builds submit --config cloudbuild.yaml --substitutions=_REPO_NAME=$INSTANCE_NAME,_SERVICE_NAME=$INSTANCE_NAME,_REGION=$REGION
