@@ -17,6 +17,6 @@ development:
     repoName: dev-gcr2gce-proxy
     serviceName: dev-gcr2gce-proxy
     serverName: dev-nextgen-mmm.pymc-labs.com
-    ipAddress: 34.71.232.125
+    ipAddress: 34.59.137.141
     port: 5000
     region: us-central1
