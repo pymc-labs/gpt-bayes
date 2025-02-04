@@ -133,7 +133,7 @@ Create new server instance:
   --image-project cos-cloud \
   --zone us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest \
-  --tags http-server,https-server
+  --tags http-server,https-server,allow-tcp-5000
 
  gcloud compute instances create-with-container dev-gpt-bayes \
   --machine-type e2-standard-4 \
@@ -142,7 +142,8 @@ Create new server instance:
   --image-project cos-cloud \
   --zone us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/dev-gpt-bayes/dev-gpt-bayes:latest \
-  --tags http-server,https-server
+  --tags http-server,https-server,allow-tcp-5000
+
 ```
 
 ### NGINX Configuration (Advanced)
