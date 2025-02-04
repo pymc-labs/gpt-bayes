@@ -53,7 +53,6 @@ app = Flask(__name__)
 app.config['broker_url'] = 'redis://localhost:6379/0'
 app.config['result_backend'] = 'redis://localhost:6379/0'
 
-
 celery = Celery(app.name, broker=app.config['broker_url'])
 celery.conf.update(app.config)
 celery.conf.update(
@@ -62,8 +61,22 @@ celery.conf.update(
     task_time_limit=600,  # Add 1-hour timeout
     broker_connection_retry_on_startup=True,  # Retry broker connection on startup
     worker_redirect_stdouts=False,  # Don't redirect stdout/stderr
-    worker_redirect_stdouts_level='DEBUG'  # Log level for stdout/stderr
+    worker_redirect_stdouts_level='DEBUG',  # Log level for stdout/stderr
+    broker_transport_options={
+        'retry_on_timeout': True,
+        'max_retries': 3,
+    },
+    redis_max_connections=10,
+    broker_pool_limit=None,  # Disable connection pool size limit
 )
+
+# Add Redis error logging
+logging.info("Initializing Celery with Redis backend")
+try:
+    celery.backend.client.ping()
+    logging.info("Successfully connected to Redis backend")
+except Exception as e:
+    logging.error("Failed to connect to Redis: %s", str(e), exc_info=True)
 
 logging.info("App started. Version: %s", __version__)
 
