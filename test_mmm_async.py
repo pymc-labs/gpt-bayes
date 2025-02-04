@@ -87,10 +87,12 @@ if __name__ == "__main__":
     
     if environment == "local":
         base_url = "http://localhost:5001"
-    elif environment == "deployed":
+    elif environment == "deployed-production":
         base_url = "https://nextgen-mmm.pymc-labs.com"
+    elif environment == "deployed-development":
+        base_url = "https://dev-nextgen-mmm.pymc-labs.com"
     else:
-        print("Invalid argument. Use 'local' or 'deployed'.")
+        print("Invalid argument. Use 'local' or 'deployed-production' or 'deployed-development'.")
         sys.exit(1)
 
     test_async_mmm_run(base_url)
