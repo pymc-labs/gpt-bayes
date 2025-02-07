@@ -46,6 +46,8 @@ else:
     # Additional local logging configuration (if needed)
     # For example, you can set a file handler or a stream handler for local logging
     pass
+    # from celery.utils.log import get_task_logger
+    # logging = get_task_logger(__name__)
 
 # Initialize Celery
 
@@ -110,12 +112,28 @@ def run_mmm_task(self, data):
         # Ensure the file is readable/writable
         os.chmod(data_file, 0o666)
 
-        try:
-            df = pd.read_json(io.StringIO(data["df"]), orient="split")
-        except Exception as e:
-            logging.info("Error reading JSON data attempting to read CSV: %s", str(e), exc_info=True)
-            df = pd.read_csv(io.StringIO(data["df"]))            
+        params = data.get("params", {}) 
 
+        try:
+            file_refs = params.get("openaiFileIdRefs", [])
+            if len(file_refs) == 0:
+                logging.info("No file references found")
+                raise ValueError("No file references found")
+            else:
+                download_url = file_refs[0].get("download_link", "") # TODO: handle multiple files
+                logging.info("Downloading data from %s", download_url)
+                df = pd.read_csv(download_url)
+                logging.info("Data downloaded successfully")
+
+                logging.info("Saving data to file")
+                file_name = file_refs[0].get("name", "")
+                file_path = os.path.join(DATA_DIR, file_name)
+                df.to_csv(file_path, index=False)
+                logging.info("Data saved to file %s", file_path)
+
+        except Exception as e:
+            logging.info("Error reading data attempting to read CSV: %s", str(e), exc_info=True)
+            raise e
 
         logging.info("DataFrame loaded with shape=%s and columns=%s", df.shape, df.columns)
         logging.info("First 5 rows:\n%s", df.head(5))
@@ -124,11 +142,12 @@ def run_mmm_task(self, data):
         if len(df) < 15: raise ValueError(f"DataFrame must have at least 15 rows for reliable model fitting. Current shape: {df.shape}")
 
         # Extract optional parameters from 'data'
-        date_column = data.get('date_column', 'date')
-        channel_columns = data.get('channel_columns', [])
-        adstock_max_lag = data.get('adstock_max_lag', 8)
-        yearly_seasonality = data.get('yearly_seasonality', 2)
-        control_columns = data.get('control_columns', None)
+        date_column = params.get('date_column', 'date')
+        channel_columns = params.get('channel_columns', [])
+        adstock_max_lag = params.get('adstock_max_lag', 8)
+        yearly_seasonality = params.get('yearly_seasonality', 2)
+        control_columns = params.get('control_columns', None)
+        y_column = params.get('y_column', 'sales')
         logging.debug("Parameters extracted: date_column=%s, channel_columns=%s, adstock_max_lag=%d, yearly_seasonality=%d, control_columns=%s",
                      date_column, channel_columns, adstock_max_lag, yearly_seasonality, control_columns)
 
@@ -140,7 +159,7 @@ def run_mmm_task(self, data):
 
         logging.debug("Creating MMM model")
         mmm = MMM(
-            adstock=GeometricAdstock(l_max=int(adstock_max_lag)),
+            adstock=GeometricAdstock(l_max=adstock_max_lag),
             saturation=LogisticSaturation(),
             date_column=date_column,
             channel_columns=channel_columns,
@@ -148,11 +167,15 @@ def run_mmm_task(self, data):
             yearly_seasonality=yearly_seasonality,
         )
         logging.info("MMM model defined.")
-        
-        X = df.drop('sales', axis=1)
-        y = df['sales']
 
-        logging.debug("Starting model fitting.")
+        # Ensure date_week is in datetime format
+        df[date_column] = pd.to_datetime(df[date_column])
+        
+        
+        # X = df.drop(y_column, axis=1).astype(float)
+        X = df.drop(y_column, axis=1)
+        y = df[y_column].astype(float)
+            
         mmm.fit(X, y)
         logging.info("Model fitting completed.")
         logging.info("run_mmm_task completed successfully.")
@@ -214,7 +237,6 @@ def extract_summary_statistics():
             task = run_mmm_task.AsyncResult(task_id)
             mmm = task.result
             logging.info("MMM model: %s", mmm)
-            import pdb; pdb.set_trace()
 
             # Extract and return summary statistics
             summary = az.summary(mmm.fit_result)
