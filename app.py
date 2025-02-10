@@ -12,7 +12,7 @@ from pymc_marketing.mmm import (
 
 import logging
 
-import pickle
+import dill as pickle # more robust than pickle
 import os
 import io
 
@@ -180,7 +180,10 @@ def run_mmm_task(self, data):
         logging.info("Model fitting completed.")
         logging.info("run_mmm_task completed successfully.")
 
-        return mmm
+        logging.info("Serializing MMM model")
+        mmm_pickle = pickle.dumps(mmm)
+        logging.info("MMM model serialized successfully")
+        return mmm_pickle
     
     except Exception as e:
         logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)
@@ -203,56 +206,52 @@ def run_mmm_async():
         return jsonify({"error": str(e)}), 500
 
 
-def check_task_status(task_id):
-    try:
-        logging.info("Received request for check_task_status with task_id: %s", task_id)
+def check_task_status(f):
+    def wrapper(*args, **kwargs):
+        try:
+            task_id = kwargs.get('task_id') or request.args.get('task_id')
+            logging.info("Checking task status with task_id: %s", task_id)
 
-        task = run_mmm_task.AsyncResult(task_id)
-        if task.state == 'PENDING':
-            logging.info("Task %s is still pending.", task_id)
-            response = {"status": "pending"}
-        elif task.state != 'FAILURE':
+            task = run_mmm_task.AsyncResult(task_id)
+            if task.state == 'PENDING':
+                logging.info("Task %s is still pending.", task_id)
+                return jsonify({"status": "pending"})
+            elif task.state == 'FAILURE':
+                logging.error("Task %s failed.", task_id)
+                return jsonify({"status": "failure", "error": str(task.info)})
+            
+            # If task completed successfully, proceed with the decorated function
             logging.info("Task %s completed successfully.", task_id)
-            response = {"status": "completed"}
-        else:
-            logging.error("Task %s failed.", task_id)
-            response = {"status": "failure", "error": str(task.info)}
-        
-        return response
-    except Exception as e:
-        logging.error("Error in check_task_status: %s", str(e), exc_info=True)
-        return {"status": "failure", "error": str(e)}
-
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            logging.error("Error in check_task_status: %s", str(e), exc_info=True)
+            return jsonify({"status": "failure", "error": str(e)}), 500
+    
+    return wrapper
 
 @app.route('/extract_summary_statistics', methods=['GET'])
+@check_task_status
 def extract_summary_statistics():
     try:
         task_id = request.args.get('task_id')
-        logging.info("Received request for extract_summary_statistics with task_id: %s", task_id)
+        task = run_mmm_task.AsyncResult(task_id)
+        mmm = pickle.loads(task.result)
+        logging.info("MMM model: %s", mmm)
 
-        task_status = check_task_status(task_id)
-        logging.info("Task status: %s with task_id: %s", task_status, task_id)
+        # Extract and return summary statistics
+        summary = az.summary(mmm.fit_result)
+        
+        # Filter only the most important statistics
+        important_params = summary[summary.index.str.contains('alpha|beta|sigma|intercept|lam|gamma_control', case=False)]
+        # Limit decimal places and convert to more compact format
+        important_params = important_params.round(5)
+        
+        summary_json = important_params.to_json(orient="split", double_precision=5)
+        logging.info("Summary statistics extracted.")
+        logging.info("summary_json=%s", summary_json)
 
-        if task_status["status"] == "completed":
-            task = run_mmm_task.AsyncResult(task_id)
-            mmm = task.result
-            logging.info("MMM model: %s", mmm)
-
-            # Extract and return summary statistics
-            summary = az.summary(mmm.fit_result)
-            
-            # Filter only the most important statistics
-            important_params = summary[summary.index.str.contains('alpha|beta|sigma|intercept|lam|gamma_control', case=False)]
-            # Limit decimal places and convert to more compact format
-            important_params = important_params.round(5)
-            
-            summary_json = important_params.to_json(orient="split", double_precision=5)
-            logging.info("Summary statistics extracted.")
-            logging.info("summary_json=%s", summary_json)
-
-            return jsonify({"status": "completed", "summary": summary_json})
-        else:
-            return jsonify(task_status)
+        return jsonify({"status": "completed", "summary": summary_json})
     except Exception as e:
         logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
         return jsonify({"status": "failure", "error": str(e)}), 500

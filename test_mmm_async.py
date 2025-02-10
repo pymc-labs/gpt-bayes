@@ -6,35 +6,40 @@ import pandas as pd
 import sys
 import io
 
-def create_payload_csv():
-    # Load the user-uploaded data file
-    data = pd.read_csv('test-data/mmm_example.csv')
-    # Rename the 'y' column to 'sales' and select relevant columns
-    data.rename(columns={'y': 'sales'}, inplace=True)
-    mmm_data = data[['date_week', 'sales', 'x1', 'x2', 'event_1', 'event_2', 't']]
-
-    # Convert 'date_week' to datetime format
-    mmm_data.loc[:, 'date_week'] = pd.to_datetime(mmm_data['date_week']).dt.strftime('%Y-%m-%d')
-
-    # Convert the prepared data to JSON format for payload, ensuring proper formatting
-    data_json = mmm_data.to_json(orient="split", index=False)
-    #print(data_json)
-    # Example payload
+def create_payload():
+   
     payload = {
-        "df": data_json,
-        "date_column": "date_week",
-        "channel_columns": ["x1", "x2"],
-        "adstock_max_lag": 2,
-        "yearly_seasonality": 8,
-        "control_columns": ["event_1", "event_2", "t"]
+        "domain": "dev-nextgen-mmm.pymc-labs.com",
+        "method": "post",
+        "path": "/run_mmm_async",
+        "operation": "runMMMAsync",
+        "operation_hash": "0c869884cb92378e2dfe2ae377cac236cbc2b9d0",
+        "is_consequential": True,
+        "params": {
+            "openaiFileIdRefs": [
+                {
+                    "name": "mmm_example.csv",
+                    "id": "file-1234567890",
+                    "mime_type": "text/csv",
+                    "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
+                }
+            ],
+            "date_column": "date_week",
+            "channel_columns": [
+            "x1",
+            "x2"
+            ],
+            "adstock_max_lag": 8,
+            "yearly_seasonality": 2,
+            "y_column": "y"
+        }
     }
-
     return payload
 
 
 def test_async_mmm_run(base_url):
     # Payload that includes data
-    payload = create_payload_csv()
+    payload = create_payload()
 
     # Replace with your API endpoint for async run
     run_url = f"{base_url}/run_mmm_async"
