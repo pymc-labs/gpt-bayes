@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://nextgen-mmm.pymc-labs.com"
+      "url": "https://dev-nextgen-mmm.pymc-labs.com"
     }
   ],
   "paths": {
@@ -16,16 +16,18 @@
         "description": "Initiates an asynchronous MMM model run.",
         "operationId": "runMMMAsync",
         "requestBody": {
-          "description": "Data and parameters for the MMM model.",
+          "description": "Both raw and cleaned data for the MMM model.",
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "df": {
-                    "type": "string",
-                    "description": "Data in CSV format for the model. Must contain at least 15 rows."
+                  "openaiFileIdRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "date_column": {
                     "type": "string",
@@ -74,10 +76,49 @@
         }
       }
     },
-    "/get_results": {
+    "/get_task_status": {
+      "get": {
+        "description": "Retrieves the status of an MMM model run.",
+        "operationId": "getTaskStatus",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": true,
+            "description": "The task ID of the MMM model run.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the model execution.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Status of the model execution."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message, present if status is 'failed'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_summary_statistics": {
       "get": {
         "description": "Retrieves the results of an MMM model run.",
-        "operationId": "getMMMResults",
+        "operationId": "getSummaryStatistics",
         "parameters": [
           {
             "name": "task_id",
@@ -104,6 +145,49 @@
                     "summary": {
                       "type": "string",
                       "description": "JSON string of summary statistics, present if status is 'completed'."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message, present if status is 'failed'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_posterior_predictive": {
+      "get": {
+        "description": "Retrieves the posterior predictive check of an MMM model run.",
+        "operationId": "getPosteriorPredictive",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": true,
+            "description": "The task ID of the MMM model run.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the model execution.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Status of the model execution."
+                    },
+                    "summary": {
+                      "type": "string",
+                      "description": "JSON string of posterior predictive samples, present if status is 'completed'."
                     },
                     "error": {
                       "type": "string",
