@@ -1,3 +1,4 @@
+import json
 from flask import Flask, request, jsonify
 from celery import Celery
 
@@ -15,6 +16,8 @@ import logging
 import dill as pickle # more robust than pickle
 import os
 import io
+
+from functools import wraps
 
 
 __version__ = "0.3"
@@ -101,7 +104,6 @@ def run_mmm_task(self, data):
     try:
         logging.info("Starting run_mmm_task here!!")
         
-
         # Use the dedicated data directory
         data_file = os.path.join(DATA_DIR, f"data_{self.request.id}.pkl")
         
@@ -112,18 +114,33 @@ def run_mmm_task(self, data):
         # Ensure the file is readable/writable
         os.chmod(data_file, 0o666)
 
-        params = data.get("params", {}) 
-
         try:
-            file_refs = params.get("openaiFileIdRefs", [])
+            file_refs = data.get("openaiFileIdRefs", [])
             if len(file_refs) == 0:
                 logging.info("No file references found")
                 raise ValueError("No file references found")
             else:
                 download_url = file_refs[0].get("download_link", "") # TODO: handle multiple files
                 logging.info("Downloading data from %s", download_url)
-                df = pd.read_csv(download_url)
-                logging.info("Data downloaded successfully")
+                
+                # Add headers to the request
+                headers = {
+                    'User-Agent': 'Mozilla/5.0',
+                    'Accept': 'text/csv'
+                }
+                
+                try:
+                    # Use requests library for better control over the HTTP request
+                    import requests
+                    response = requests.get(download_url, headers=headers)
+                    response.raise_for_status()  # Raise an exception for bad status codes
+                    
+                    # Read CSV from the response content
+                    df = pd.read_csv(io.StringIO(response.text))
+                    logging.info("Data downloaded successfully")
+                except requests.exceptions.RequestException as e:
+                    logging.error("Failed to download file: %s", str(e), exc_info=True)
+                    raise ValueError(f"Failed to download file: {str(e)}")
 
                 logging.info("Saving data to file")
                 file_name = file_refs[0].get("name", "")
@@ -132,7 +149,7 @@ def run_mmm_task(self, data):
                 logging.info("Data saved to file %s", file_path)
 
         except Exception as e:
-            logging.info("Error reading data attempting to read CSV: %s", str(e), exc_info=True)
+            logging.error("Error reading data attempting to read CSV: %s", str(e), exc_info=True)
             raise e
 
         logging.info("DataFrame loaded with shape=%s and columns=%s", df.shape, df.columns)
@@ -142,12 +159,12 @@ def run_mmm_task(self, data):
         if len(df) < 15: raise ValueError(f"DataFrame must have at least 15 rows for reliable model fitting. Current shape: {df.shape}")
 
         # Extract optional parameters from 'data'
-        date_column = params.get('date_column', 'date')
-        channel_columns = params.get('channel_columns', [])
-        adstock_max_lag = params.get('adstock_max_lag', 8)
-        yearly_seasonality = params.get('yearly_seasonality', 2)
-        control_columns = params.get('control_columns', None)
-        y_column = params.get('y_column', 'sales')
+        date_column = data.get('date_column', 'date')
+        channel_columns = data.get('channel_columns', [])
+        adstock_max_lag = data.get('adstock_max_lag', 8)
+        yearly_seasonality = data.get('yearly_seasonality', 2)
+        control_columns = data.get('control_columns', None)
+        y_column = data.get('y_column', 'y')
         logging.debug("Parameters extracted: date_column=%s, channel_columns=%s, adstock_max_lag=%d, yearly_seasonality=%d, control_columns=%s",
                      date_column, channel_columns, adstock_max_lag, yearly_seasonality, control_columns)
 
@@ -204,12 +221,22 @@ def run_mmm_async():
     except Exception as e:
         logging.error("Error in run_mmm_async: %s", str(e), exc_info=True)
         return jsonify({"error": str(e)}), 500
+    
 
+@app.route('/get_task_status', methods=['GET'])
+def get_task_status():
+    task_id = request.args.get('task_id')
+    task = run_mmm_task.AsyncResult(task_id)
+    return jsonify({"status": task.state})
 
 def check_task_status(f):
+    @wraps(f)  # Preserve function metadata
     def wrapper(*args, **kwargs):
         try:
-            task_id = kwargs.get('task_id') or request.args.get('task_id')
+            task_id = request.args.get('task_id')  # Simplify task_id extraction
+            if not task_id:
+                return jsonify({"status": "failure", "error": "No task_id provided"}), 400
+
             logging.info("Checking task status with task_id: %s", task_id)
 
             task = run_mmm_task.AsyncResult(task_id)
@@ -230,9 +257,9 @@ def check_task_status(f):
     
     return wrapper
 
-@app.route('/extract_summary_statistics', methods=['GET'])
+@app.route('/get_summary_statistics', methods=['GET'])
 @check_task_status
-def extract_summary_statistics():
+def get_summary_statistics():
     try:
         task_id = request.args.get('task_id')
         task = run_mmm_task.AsyncResult(task_id)
@@ -254,6 +281,37 @@ def extract_summary_statistics():
         return jsonify({"status": "completed", "summary": summary_json})
     except Exception as e:
         logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
+        return jsonify({"status": "failure", "error": str(e)}), 500
+
+
+@app.route('/get_posterior_predictive', methods=['GET'])
+@check_task_status
+def get_posterior_predictive():
+    try:
+        task_id = request.args.get('task_id')
+        task = run_mmm_task.AsyncResult(task_id)
+        mmm = pickle.loads(task.result)
+        logging.info("MMM model: %s", mmm)
+
+        logging.info("Sampling posterior predictive")
+        mmm.sample_posterior_predictive(mmm.X, extend_idata = True, combined = True)
+        logging.info("Posterior predictive sampled")
+
+        logging.info("Generating posterior predictive plot")
+        fig = mmm.plot_posterior_predictive()
+        logging.info("Posterior predictive plot generated")
+        
+        axes = fig.get_axes()[0]
+        posterior_predictive_dict = {
+            'obs_xdata': list(map(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'), axes.get_lines()[0].get_xdata())),
+            'obs_ydata': list(axes.get_lines()[0].get_ydata()),
+            'pred_ydata': list(axes.get_lines()[1].get_ydata())
+        }
+        posterior_predictive_json = json.dumps(posterior_predictive_dict)
+        logging.info("Posterior predictive JSON generated")
+        return jsonify({"status": "completed", "posterior_predictive": posterior_predictive_json})
+    except Exception as e:
+        logging.error("Error in get_posterior_predictive: %s", str(e), exc_info=True)
         return jsonify({"status": "failure", "error": str(e)}), 500
 
 

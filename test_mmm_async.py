@@ -7,7 +7,6 @@ import sys
 import io
 
 def create_payload():
-   
     payload = {
         "domain": "dev-nextgen-mmm.pymc-labs.com",
         "method": "post",
@@ -15,24 +14,22 @@ def create_payload():
         "operation": "runMMMAsync",
         "operation_hash": "0c869884cb92378e2dfe2ae377cac236cbc2b9d0",
         "is_consequential": True,
-        "params": {
-            "openaiFileIdRefs": [
-                {
-                    "name": "mmm_example.csv",
-                    "id": "file-1234567890",
-                    "mime_type": "text/csv",
-                    "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
-                }
-            ],
-            "date_column": "date_week",
-            "channel_columns": [
+        "openaiFileIdRefs": [
+            {
+                "name": "mmm_example.csv",
+                "id": "file-1234567890",
+                "mime_type": "text/csv",
+                "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
+            }
+        ],
+        "date_column": "date_week",
+        "channel_columns": [
             "x1",
             "x2"
-            ],
-            "adstock_max_lag": 8,
-            "yearly_seasonality": 2,
-            "y_column": "y"
-        }
+        ],
+        "adstock_max_lag": 8,
+        "yearly_seasonality": 2,
+        "y_column": "y"
     }
     return payload
 
