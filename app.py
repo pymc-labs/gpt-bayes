@@ -1,6 +1,6 @@
 import json
 from flask import Flask, request, jsonify
-from celery import Celery
+from celery import Celery, Task
 
 import pandas as pd
 import arviz as az
@@ -52,38 +52,37 @@ else:
     # from celery.utils.log import get_task_logger
     # logging = get_task_logger(__name__)
 
-# Initialize Celery
-
-app = Flask(__name__)
-app.config['broker_url'] = 'redis://localhost:6379/0'
-app.config['result_backend'] = 'redis://localhost:6379/0'
-
-celery = Celery(app.name, broker=app.config['broker_url'])
-celery.conf.update(app.config)
-celery.conf.update(
-    worker_pool='threads',  # Use prefork (multiprocessing)
-    task_always_eager=False,  # Ensure tasks are not run locally by the worker that started them
-    task_time_limit=600,  # Add 1-hour timeout
-    broker_connection_retry_on_startup=True,  # Retry broker connection on startup
-    worker_redirect_stdouts=False,  # Don't redirect stdout/stderr
-    worker_redirect_stdouts_level='DEBUG',  # Log level for stdout/stderr
-    broker_transport_options={
-        'retry_on_timeout': True,
-        'max_retries': 3,
-    },
-    redis_max_connections=10,
-    broker_pool_limit=None,  # Disable connection pool size limit
+# Create module-level Celery instance
+celery = Celery(
+    "app",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/0"
 )
 
-# Add Redis error logging
-logging.info("Initializing Celery with Redis backend")
-try:
-    celery.backend.client.ping()
-    logging.info("Successfully connected to Redis backend")
-except Exception as e:
-    logging.error("Failed to connect to Redis: %s", str(e), exc_info=True)
+def celery_init_app(app: Flask) -> Celery:
+    class FlaskTask(Task):
+        def __call__(self, *args: object, **kwargs: object) -> object:
+            with app.app_context():
+                return self.run(*args, **kwargs)
 
-logging.info("App started. Version: %s", __version__)
+    celery.Task = FlaskTask
+    celery.config_from_object(app.config["CELERY"])
+    app.extensions["celery"] = celery
+    return celery
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config.from_mapping(
+    CELERY=dict(
+        broker_url="redis://localhost:6379/0",
+        result_backend="redis://localhost:6379/0",
+        worker_pool='threads',
+        task_time_limit=600,
+        broker_connection_retry=True,
+        broker_connection_max_retries=0,  # Retry forever
+    ),
+)
+celery_app = celery_init_app(app)
 
 # Create a data directory if it doesn't exist
 DATA_DIR = "/tmp/mmm_data"
@@ -284,35 +283,35 @@ def get_summary_statistics():
         return jsonify({"status": "failure", "error": str(e)}), 500
 
 
-@app.route('/get_posterior_predictive', methods=['GET'])
-@check_task_status
-def get_posterior_predictive():
-    try:
-        task_id = request.args.get('task_id')
-        task = run_mmm_task.AsyncResult(task_id)
-        mmm = pickle.loads(task.result)
-        logging.info("MMM model: %s", mmm)
+# @app.route('/get_posterior_predictive', methods=['GET'])
+# @check_task_status
+# def get_posterior_predictive():
+#     try:
+#         task_id = request.args.get('task_id')
+#         task = run_mmm_task.AsyncResult(task_id)
+#         mmm = pickle.loads(task.result)
+#         logging.info("MMM model: %s", mmm)
 
-        logging.info("Sampling posterior predictive")
-        mmm.sample_posterior_predictive(mmm.X, extend_idata = True, combined = True)
-        logging.info("Posterior predictive sampled")
+#         logging.info("Sampling posterior predictive")
+#         mmm.sample_posterior_predictive(mmm.X, extend_idata = True, combined = True)
+#         logging.info("Posterior predictive sampled")
 
-        logging.info("Generating posterior predictive plot")
-        fig = mmm.plot_posterior_predictive()
-        logging.info("Posterior predictive plot generated")
+#         logging.info("Generating posterior predictive plot")
+#         fig = mmm.plot_posterior_predictive()
+#         logging.info("Posterior predictive plot generated")
         
-        axes = fig.get_axes()[0]
-        posterior_predictive_dict = {
-            'obs_xdata': list(map(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'), axes.get_lines()[0].get_xdata())),
-            'obs_ydata': list(axes.get_lines()[0].get_ydata()),
-            'pred_ydata': list(axes.get_lines()[1].get_ydata())
-        }
-        posterior_predictive_json = json.dumps(posterior_predictive_dict)
-        logging.info("Posterior predictive JSON generated")
-        return jsonify({"status": "completed", "posterior_predictive": posterior_predictive_json})
-    except Exception as e:
-        logging.error("Error in get_posterior_predictive: %s", str(e), exc_info=True)
-        return jsonify({"status": "failure", "error": str(e)}), 500
+#         axes = fig.get_axes()[0]
+#         posterior_predictive_dict = {
+#             'obs_xdata': list(map(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'), axes.get_lines()[0].get_xdata())),
+#             'obs_ydata': list(axes.get_lines()[0].get_ydata()),
+#             'pred_ydata': list(axes.get_lines()[1].get_ydata())
+#         }
+#         posterior_predictive_json = json.dumps(posterior_predictive_dict)
+#         logging.info("Posterior predictive JSON generated")
+#         return jsonify({"status": "completed", "posterior_predictive": posterior_predictive_json})
+#     except Exception as e:
+#         logging.error("Error in get_posterior_predictive: %s", str(e), exc_info=True)
+#         return jsonify({"status": "failure", "error": str(e)}), 500
 
 
 if __name__ == '__main__':

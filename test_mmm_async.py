@@ -54,7 +54,7 @@ def test_async_mmm_run(base_url):
     print(f"Got task_id {task_id}")
 
     # Polling URL
-    results_url = f"{base_url}/extract_summary_statistics?task_id={task_id}"
+    results_url = f"{base_url}/get_summary_statistics?task_id={task_id}"
 
     # Poll for results
     while True:
