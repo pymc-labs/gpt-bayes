@@ -1,10 +1,11 @@
 import json
 from flask import Flask, request, jsonify
 from celery import Celery, Task
+from kombu import serialization
 
 import pandas as pd
 import arviz as az
-
+import numpy as np
 from pymc_marketing.mmm import (
     GeometricAdstock,
     LogisticSaturation,
@@ -13,7 +14,7 @@ from pymc_marketing.mmm import (
 
 import logging
 
-import dill as pickle # more robust than pickle
+import dill
 import os
 import io
 
@@ -52,6 +53,14 @@ else:
     # from celery.utils.log import get_task_logger
     # logging = get_task_logger(__name__)
 
+# Register dill as the serialization method for Celery
+serialization.register(
+    name = 'dill',
+    encoder = dill.dumps,
+    decoder = dill.loads,
+    content_type='application/octet-stream'
+)
+
 # Create module-level Celery instance
 celery = Celery(
     "app",
@@ -80,6 +89,9 @@ app.config.from_mapping(
         task_time_limit=600,
         broker_connection_retry=True,
         broker_connection_max_retries=0,  # Retry forever
+        task_serializer='dill',
+        result_serializer='dill',
+        accept_content=['dill']
     ),
 )
 celery_app = celery_init_app(app)
@@ -108,7 +120,7 @@ def run_mmm_task(self, data):
         
         # Save the data to file
         with open(data_file, "wb") as f:
-            pickle.dump(data, f)
+            dill.dump(data, f)
         
         # Ensure the file is readable/writable
         os.chmod(data_file, 0o666)
@@ -196,10 +208,7 @@ def run_mmm_task(self, data):
         logging.info("Model fitting completed.")
         logging.info("run_mmm_task completed successfully.")
 
-        logging.info("Serializing MMM model")
-        mmm_pickle = pickle.dumps(mmm)
-        logging.info("MMM model serialized successfully")
-        return mmm_pickle
+        return mmm
     
     except Exception as e:
         logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)
@@ -262,7 +271,7 @@ def get_summary_statistics():
     try:
         task_id = request.args.get('task_id')
         task = run_mmm_task.AsyncResult(task_id)
-        mmm = pickle.loads(task.result)
+        mmm = task.result
         logging.info("MMM model: %s", mmm)
 
         # Extract and return summary statistics
@@ -281,7 +290,41 @@ def get_summary_statistics():
     except Exception as e:
         logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
         return jsonify({"status": "failure", "error": str(e)}), 500
+    
 
+# @app.route('/get_return_on_ad_spend', methods=['GET'])
+# @check_task_status
+# def get_return_on_ad_spend():
+#     try:
+#         task_id = request.args.get('task_id')
+#         task = run_mmm_task.AsyncResult(task_id)
+#         mmm = task.result
+#         logging.info("MMM model: %s", mmm)
+
+#         # Get the return on ad spend
+#         channel_contribution_original_scale = mmm.compute_channel_contribution_original_scale()
+#         channel_columns = mmm.channel_columns
+#         spend_sum = mmm.X[channel_columns].sum().to_numpy()
+
+#         roas_samples = (
+#             channel_contribution_original_scale.sum(dim="date")
+#             / spend_sum[np.newaxis, np.newaxis, :]
+#         )
+#         roas_mean = roas_samples.mean(dim=["draw", "chain"])
+#         roas_hdi = az.hdi(roas_samples, hdi_prob=0.94)
+
+#         return_on_ad_spend = {
+#             "channel_columns": channel_columns,
+#             "roas_mean": roas_mean.tolist(),
+#             "roas_hdi_lower": roas_hdi.tolist()[0],
+#             "roas_hdi_upper": roas_hdi.tolist()[1]
+#         }
+#         logging.info("Return on ad spend: %s", return_on_ad_spend)
+
+#         return jsonify({"status": "completed", "return_on_ad_spend": return_on_ad_spend})
+#     except Exception as e:
+#         logging.error("Error in get_return_on_ad_spend: %s", str(e), exc_info=True)
+#         return jsonify({"status": "failure", "error": str(e)}), 500
 
 # @app.route('/get_posterior_predictive', methods=['GET'])
 # @check_task_status
@@ -289,7 +332,7 @@ def get_summary_statistics():
 #     try:
 #         task_id = request.args.get('task_id')
 #         task = run_mmm_task.AsyncResult(task_id)
-#         mmm = pickle.loads(task.result)
+#         mmm = task.result
 #         logging.info("MMM model: %s", mmm)
 
 #         logging.info("Sampling posterior predictive")
