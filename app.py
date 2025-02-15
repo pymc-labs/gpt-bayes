@@ -5,7 +5,6 @@ from kombu import serialization
 
 import pandas as pd
 import arviz as az
-import numpy as np
 from pymc_marketing.mmm import (
     GeometricAdstock,
     LogisticSaturation,
@@ -290,41 +289,6 @@ def get_summary_statistics():
     except Exception as e:
         logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
         return jsonify({"status": "failure", "error": str(e)}), 500
-    
-
-# @app.route('/get_return_on_ad_spend', methods=['GET'])
-# @check_task_status
-# def get_return_on_ad_spend():
-#     try:
-#         task_id = request.args.get('task_id')
-#         task = run_mmm_task.AsyncResult(task_id)
-#         mmm = task.result
-#         logging.info("MMM model: %s", mmm)
-
-#         # Get the return on ad spend
-#         channel_contribution_original_scale = mmm.compute_channel_contribution_original_scale()
-#         channel_columns = mmm.channel_columns
-#         spend_sum = mmm.X[channel_columns].sum().to_numpy()
-
-#         roas_samples = (
-#             channel_contribution_original_scale.sum(dim="date")
-#             / spend_sum[np.newaxis, np.newaxis, :]
-#         )
-#         roas_mean = roas_samples.mean(dim=["draw", "chain"])
-#         roas_hdi = az.hdi(roas_samples, hdi_prob=0.94)
-
-#         return_on_ad_spend = {
-#             "channel_columns": channel_columns,
-#             "roas_mean": roas_mean.tolist(),
-#             "roas_hdi_lower": roas_hdi.tolist()[0],
-#             "roas_hdi_upper": roas_hdi.tolist()[1]
-#         }
-#         logging.info("Return on ad spend: %s", return_on_ad_spend)
-
-#         return jsonify({"status": "completed", "return_on_ad_spend": return_on_ad_spend})
-#     except Exception as e:
-#         logging.error("Error in get_return_on_ad_spend: %s", str(e), exc_info=True)
-#         return jsonify({"status": "failure", "error": str(e)}), 500
 
 # @app.route('/get_posterior_predictive', methods=['GET'])
 # @check_task_status
