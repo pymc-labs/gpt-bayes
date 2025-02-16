@@ -96,6 +96,15 @@ The most important parameters are:
 * intercept: Intercept parameter
 * (optional) gamma_control: Control parameters that multiply the control variables
 
+You can retrieve the return on ad spend from the `return_on_ad_spend` field in the payload returned by `getReturnOnAdSpend`. This is a JSON object with the following fields:
+
+- `channel_columns`: List of channel columns.
+- `roas_mean`: Mean of the return on ad spend.
+- `roas_hdi_lower`: Lower bound of the 94% confidence interval of the return on ad spend.
+- `roas_hdi_upper`: Upper bound of the 94% confidence interval of the return on ad spend.
+
+Plot the return on ad spend using the `roas_mean` and the `roas_hdi_lower` and `roas_hdi_upper` to plot the confidence interval.
+
 ### 6. Analysis Workflow
 
 While waiting for results, you can suggest to the user to perform exploratory data analysis. Here some ideas:
