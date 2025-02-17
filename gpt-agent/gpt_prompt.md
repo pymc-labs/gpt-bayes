@@ -119,3 +119,7 @@ After retrieving results here are some ideas:
 - Saturation Curve Plot: Display channel saturations in a single plot with uncertainty.
 
 - Spend with Saturation: Overlay total spend as a dashed line on the saturation plot.
+
+** Important Reminder **
+
+- Throughout your interactions provide **concise responses** using bullet points and formulas when appropriate.
