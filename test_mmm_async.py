@@ -2,9 +2,14 @@ import requests
 import json
 import time
 import pandas as pd
-
+import os
 import sys
 import io
+import dotenv
+
+dotenv.load_dotenv()
+
+API_KEY = os.environ.get('API_KEY', None)
 
 def create_payload():
     payload = {
@@ -42,10 +47,12 @@ def test_async_mmm_run(base_url):
     run_url = f"{base_url}/run_mmm_async"
 
     # Make a POST request to initiate the model run
-    headers = {'Content-Type': 'application/json'}
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY
+    }
     response = requests.post(run_url, data=json.dumps(payload), headers=headers)
     
-    print(response)
     # Assert the status code for initiation
     assert response.status_code == 200
 
@@ -58,7 +65,7 @@ def test_async_mmm_run(base_url):
 
     # Poll for results
     while True:
-        result_response = requests.get(results_url)
+        result_response = requests.get(results_url, headers=headers)
         result_data = result_response.json()
 
         if result_data["status"] == "completed":
