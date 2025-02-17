@@ -19,8 +19,9 @@ import io
 
 from functools import wraps
 
-
 __version__ = "0.3"
+
+API_KEY = os.environ.get('API_KEY', None)
 
 running_in_google_cloud = os.environ.get('RUNNING_IN_GOOGLE_CLOUD', 'False').lower() == 'true'
 
@@ -212,9 +213,20 @@ def run_mmm_task(self, data):
     except Exception as e:
         logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)
         return {"status": "failed", "error": str(e)}
+    
+def require_api_key(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
 
+        if api_key and api_key == API_KEY:
+            return func(*args, **kwargs)
+        else:
+            return jsonify({"message": "Unauthorized"}), 401
+    return decorated_function
 
 @app.route('/run_mmm_async', methods=['POST'])
+@require_api_key
 def run_mmm_async():
     try:
         logging.info("Received request to run_mmm_async")
@@ -231,6 +243,7 @@ def run_mmm_async():
     
 
 @app.route('/get_task_status', methods=['GET'])
+@require_api_key
 def get_task_status():
     task_id = request.args.get('task_id')
     task = run_mmm_task.AsyncResult(task_id)
@@ -265,6 +278,7 @@ def check_task_status(f):
     return wrapper
 
 @app.route('/get_summary_statistics', methods=['GET'])
+@require_api_key
 @check_task_status
 def get_summary_statistics():
     try:

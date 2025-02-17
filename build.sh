@@ -18,7 +18,8 @@ get_config() {
 # Get configuration values
 INSTANCE_NAME=$(get_config "instanceName")
 REGION=$(get_config "region")
+API_KEY=$(grep API_KEY .env | cut -d "'" -f 2)
 
 echo "Building $INSTANCE_NAME in $REGION"
 
-gcloud builds submit --config cloudbuild.yaml --substitutions=_REPO_NAME=$INSTANCE_NAME,_SERVICE_NAME=$INSTANCE_NAME,_REGION=$REGION
+gcloud builds submit --config cloudbuild.yaml --substitutions=_REPO_NAME=$INSTANCE_NAME,_SERVICE_NAME=$INSTANCE_NAME,_REGION=$REGION,_API_KEY=$API_KEY
