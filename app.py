@@ -1,9 +1,10 @@
+import json
 from flask import Flask, request, jsonify
-from celery import Celery
+from celery import Celery, Task
+from kombu import serialization
 
 import pandas as pd
 import arviz as az
-
 from pymc_marketing.mmm import (
     GeometricAdstock,
     LogisticSaturation,
@@ -12,12 +13,15 @@ from pymc_marketing.mmm import (
 
 import logging
 
-import pickle
+import dill
 import os
 import io
 
+from functools import wraps
 
-__version__ = "0.3"
+__version__ = "0.4"
+
+API_KEY = os.environ.get('API_KEY', None)
 
 running_in_google_cloud = os.environ.get('RUNNING_IN_GOOGLE_CLOUD', 'False').lower() == 'true'
 
@@ -46,34 +50,57 @@ else:
     # Additional local logging configuration (if needed)
     # For example, you can set a file handler or a stream handler for local logging
     pass
+    # from celery.utils.log import get_task_logger
+    # logging = get_task_logger(__name__)
 
-# Initialize Celery
-
-app = Flask(__name__)
-app.config['broker_url'] = 'redis://localhost:6379/0'
-app.config['result_backend'] = 'redis://localhost:6379/0'
-
-
-celery = Celery(app.name, broker=app.config['broker_url'])
-celery.conf.update(app.config)
-celery.conf.update(
-    worker_pool='threads',  # Use prefork (multiprocessing)
-    task_always_eager=False,  # Ensure tasks are not run locally by the worker that started them
-    task_time_limit=600,  # Add 1-hour timeout
-    broker_connection_retry_on_startup=True,  # Retry broker connection on startup
-    worker_redirect_stdouts=False,  # Don't redirect stdout/stderr
-    worker_redirect_stdouts_level='DEBUG'  # Log level for stdout/stderr
+# Register dill as the serialization method for Celery
+serialization.register(
+    name = 'dill',
+    encoder = dill.dumps,
+    decoder = dill.loads,
+    content_type='application/octet-stream'
 )
 
-logging.info("App started. Version: %s", __version__)
+# Create module-level Celery instance
+celery = Celery(
+    "app",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/0"
+)
+
+def celery_init_app(app: Flask) -> Celery:
+    class FlaskTask(Task):
+        def __call__(self, *args: object, **kwargs: object) -> object:
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = FlaskTask
+    celery.config_from_object(app.config["CELERY"])
+    app.extensions["celery"] = celery
+    return celery
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config.from_mapping(
+    CELERY=dict(
+        broker_url="redis://localhost:6379/0",
+        result_backend="redis://localhost:6379/0",
+        worker_pool='threads',
+        task_time_limit=600,
+        broker_connection_retry=True,
+        broker_connection_max_retries=0,  # Retry forever
+        task_serializer='dill',
+        result_serializer='dill',
+        accept_content=['dill']
+    ),
+)
+celery_app = celery_init_app(app)
 
 # Create a data directory if it doesn't exist
 DATA_DIR = "/tmp/mmm_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 # Ensure proper permissions (readable/writable by all users)
 os.chmod(DATA_DIR, 0o777)
-
-
 
 
 @celery.task(bind=True)
@@ -88,23 +115,53 @@ def run_mmm_task(self, data):
     try:
         logging.info("Starting run_mmm_task here!!")
         
-
         # Use the dedicated data directory
         data_file = os.path.join(DATA_DIR, f"data_{self.request.id}.pkl")
         
         # Save the data to file
         with open(data_file, "wb") as f:
-            pickle.dump(data, f)
+            dill.dump(data, f)
         
         # Ensure the file is readable/writable
         os.chmod(data_file, 0o666)
 
         try:
-            df = pd.read_json(io.StringIO(data["df"]), orient="split")
-        except Exception as e:
-            logging.info("Error reading JSON data attempting to read CSV: %s", str(e), exc_info=True)
-            df = pd.read_csv(io.StringIO(data["df"]))            
+            file_refs = data.get("openaiFileIdRefs", [])
+            if len(file_refs) == 0:
+                logging.info("No file references found")
+                raise ValueError("No file references found")
+            else:
+                download_url = file_refs[0].get("download_link", "") # TODO: handle multiple files
+                logging.info("Downloading data from %s", download_url)
+                
+                # Add headers to the request
+                headers = {
+                    'User-Agent': 'Mozilla/5.0',
+                    'Accept': 'text/csv'
+                }
+                
+                try:
+                    # Use requests library for better control over the HTTP request
+                    import requests
+                    response = requests.get(download_url, headers=headers)
+                    response.raise_for_status()  # Raise an exception for bad status codes
+                    
+                    # Read CSV from the response content
+                    df = pd.read_csv(io.StringIO(response.text))
+                    logging.info("Data downloaded successfully")
+                except requests.exceptions.RequestException as e:
+                    logging.error("Failed to download file: %s", str(e), exc_info=True)
+                    raise ValueError(f"Failed to download file: {str(e)}")
 
+                logging.info("Saving data to file")
+                file_name = file_refs[0].get("name", "")
+                file_path = os.path.join(DATA_DIR, file_name)
+                df.to_csv(file_path, index=False)
+                logging.info("Data saved to file %s", file_path)
+
+        except Exception as e:
+            logging.error("Error reading data attempting to read CSV: %s", str(e), exc_info=True)
+            raise e
 
         logging.info("DataFrame loaded with shape=%s and columns=%s", df.shape, df.columns)
         logging.info("First 5 rows:\n%s", df.head(5))
@@ -118,6 +175,7 @@ def run_mmm_task(self, data):
         adstock_max_lag = data.get('adstock_max_lag', 8)
         yearly_seasonality = data.get('yearly_seasonality', 2)
         control_columns = data.get('control_columns', None)
+        y_column = data.get('y_column', 'y')
         logging.debug("Parameters extracted: date_column=%s, channel_columns=%s, adstock_max_lag=%d, yearly_seasonality=%d, control_columns=%s",
                      date_column, channel_columns, adstock_max_lag, yearly_seasonality, control_columns)
 
@@ -127,13 +185,9 @@ def run_mmm_task(self, data):
         if not is_valid_dates(df, date_column):
             raise ValueError(f"Date column must be in YYYY-MM-DD format (e.g. 2023-12-31). Found values like: {df[date_column].iloc[0]} with dtype: {df[date_column].dtype}")
 
-
-        # Define and fit the MMM model
-        # import ipdb; ipdb.set_trace()
-
         logging.debug("Creating MMM model")
         mmm = MMM(
-            adstock=GeometricAdstock(l_max=int(adstock_max_lag)),
+            adstock=GeometricAdstock(l_max=adstock_max_lag),
             saturation=LogisticSaturation(),
             date_column=date_column,
             channel_columns=channel_columns,
@@ -141,16 +195,98 @@ def run_mmm_task(self, data):
             yearly_seasonality=yearly_seasonality,
         )
         logging.info("MMM model defined.")
+
+        # Ensure date_week is in datetime format
+        df[date_column] = pd.to_datetime(df[date_column])
         
-        X = df.drop('sales', axis=1)
-        y = df['sales']
-
-        logging.debug("Starting model fitting.")
-
-        # mmm.fit(X, y, random_seed=42, cores=1)
+        
+        # X = df.drop(y_column, axis=1).astype(float)
+        X = df.drop(y_column, axis=1)
+        y = df[y_column].astype(float)
+            
         mmm.fit(X, y)
         logging.info("Model fitting completed.")
-        
+        logging.info("run_mmm_task completed successfully.")
+
+        return mmm
+    
+    except Exception as e:
+        logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)
+        return {"status": "failed", "error": str(e)}
+    
+def require_api_key(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+
+        if api_key and api_key == API_KEY:
+            return func(*args, **kwargs)
+        else:
+            return jsonify({"message": "Unauthorized"}), 401
+    return decorated_function
+
+@app.route('/run_mmm_async', methods=['POST'])
+@require_api_key
+def run_mmm_async():
+    try:
+        logging.info("Received request to run_mmm_async")
+        data = request.get_json()
+        logging.debug("run_mmm_async request data: %s", data)
+
+        task = run_mmm_task.apply_async(args=[data])
+        logging.info("Task submitted with ID: %s", task.id)
+
+        return jsonify({"task_id": task.id})
+    except Exception as e:
+        logging.error("Error in run_mmm_async: %s", str(e), exc_info=True)
+        return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/get_task_status', methods=['GET'])
+@require_api_key
+def get_task_status():
+    task_id = request.args.get('task_id')
+    task = run_mmm_task.AsyncResult(task_id)
+    return jsonify({"status": task.state})
+
+def check_task_status(f):
+    @wraps(f)  # Preserve function metadata
+    def wrapper(*args, **kwargs):
+        try:
+            task_id = request.args.get('task_id')  # Simplify task_id extraction
+            if not task_id:
+                return jsonify({"status": "failure", "error": "No task_id provided"}), 400
+
+            logging.info("Checking task status with task_id: %s", task_id)
+
+            task = run_mmm_task.AsyncResult(task_id)
+            if task.state == 'PENDING':
+                logging.info("Task %s is still pending.", task_id)
+                return jsonify({"status": "pending"})
+            elif task.state == 'FAILURE':
+                logging.error("Task %s failed.", task_id)
+                return jsonify({"status": "failure", "error": str(task.info)})
+            
+            # If task completed successfully, proceed with the decorated function
+            logging.info("Task %s completed successfully.", task_id)
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            logging.error("Error in check_task_status: %s", str(e), exc_info=True)
+            return jsonify({"status": "failure", "error": str(e)}), 500
+    
+    return wrapper
+
+@app.route('/get_summary_statistics', methods=['GET'])
+@require_api_key
+@check_task_status
+def get_summary_statistics():
+    try:
+        task_id = request.args.get('task_id')
+        task = run_mmm_task.AsyncResult(task_id)
+        mmm = task.result
+        logging.info("MMM model: %s", mmm)
+
         # Extract and return summary statistics
         summary = az.summary(mmm.fit_result)
         
@@ -162,70 +298,11 @@ def run_mmm_task(self, data):
         summary_json = important_params.to_json(orient="split", double_precision=5)
         logging.info("Summary statistics extracted.")
         logging.info("summary_json=%s", summary_json)
-        
-        # Add model metrics
-        response = {
-            "status": "completed",
-            "summary": summary_json,
-            # "model_info": {
-            #     "num_observations": len(df),
-            #     "channels": channel_columns,
-            #     "adstock_max_lag": adstock_max_lag,
-            #     "yearly_seasonality": yearly_seasonality
-            # }
-        }
 
-        logging.info("run_mmm_task completed successfully.")
-        logging.debug("response=%s", response)
-
-        return response
-    
+        return jsonify({"status": "completed", "summary": summary_json})
     except Exception as e:
-        logging.error("run_mmm_task failed: %s\nJSON data: %s", str(e), data, exc_info=True)
-        return {"status": "failed", "error": str(e)} 
-
-
-@app.route('/run_mmm_async', methods=['POST'])
-def run_mmm_async():
-    try:
-        logging.info("Received request to run_mmm_async")
-        data = request.get_json()
-        logging.debug("run_mmm_async request data: %s", data)
-
-        task = run_mmm_task.apply_async(args=[data])
-        logging.info("Task submitted with ID: %s", task.id)
-
-        # session[task.id] = "STARTED"
-
-        return jsonify({"task_id": task.id})
-    except Exception as e:
-        logging.error("Error in run_mmm_async: %s", str(e), exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/get_results', methods=['GET'])
-def get_results():
-    try:
-        task_id = request.args.get('task_id')
-        logging.info("Received request for get_results with task_id: %s", task_id)
-
-        # if task_id not in session:
-        #     return jsonify({'status': "failure", "error":'No such task'}), 404
-
-        task = run_mmm_task.AsyncResult(task_id)
-        if task.state == 'PENDING':
-            logging.info("Task %s is still pending.", task_id)
-            response = {"status": "pending"}
-        elif task.state != 'FAILURE':
-            logging.info("Task %s completed successfully.", task_id)
-            response = task.result
-        else:
-            logging.error("Task %s failed.", task_id)
-            response = {"status": "failure", "error": str(task.info)}
-        
-        return jsonify(response)
-    except Exception as e:
-        logging.error("Error in get_results: %s", str(e), exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
+        return jsonify({"status": "failure", "error": str(e)}), 500
 
 if __name__ == '__main__':
     from argparse import ArgumentParser

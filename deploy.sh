@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# Validate environment argument
+if [ "$1" != "production" ] && [ "$1" != "development" ]; then
+    echo "Error: Environment must be specified as either 'production' or 'development'"
+    echo "Usage: $0 <environment>"
+    exit 1
+fi
+
+ENVIRONMENT=$1
+
+# Function to read config value
+get_config() {
+    local key=$1
+    yq ".$ENVIRONMENT.$key" config.yaml | tr -d '"'
+}
+
+# Get configuration values
+INSTANCE_NAME=$(get_config "instanceName")
+REGION=$(get_config "region")
+ZONE=$(get_config "zone")
+
 # Function to check if rebuild is needed
 should_rebuild() {
     read -p "Did you modify Dockerfile, environment.yml or other dependencies? (y/N): " answer
@@ -15,23 +35,23 @@ should_rebuild() {
 
 if should_rebuild; then
     echo "Rebuilding container..."
-    gcloud builds submit
+    ./build.sh $ENVIRONMENT
     
     echo "Cleaning up docker system..."
-    gcloud compute ssh gpt-bayes --zone us-central1-a --command 'docker system prune -f -a'
+    gcloud compute ssh "$INSTANCE_NAME" --zone "$ZONE" --command 'docker system prune -f -a'
 
     echo "Updating container..."
-    gcloud compute instances update-container gpt-bayes \
-        --zone=us-central1-a \
-        --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
+    gcloud compute instances update-container "$INSTANCE_NAME" \
+        --zone="$ZONE" \
+        --container-image=$REGION-docker.pkg.dev/bayes-gpt/$INSTANCE_NAME/$INSTANCE_NAME:latest
 else
     echo "Copying new files and restarting application..."
     # First, copy files to the instance
-    gcloud compute scp --zone=us-central1-a --recurse ./*.py gpt-bayes:/tmp/
+    gcloud compute scp --zone="$ZONE" --recurse ./*.py "$INSTANCE_NAME":/tmp/
     
     # Then copy files into the container and restart services
-    gcloud compute ssh gpt-bayes --zone=us-central1-a --command "
-        CONTAINER_ID=\$(docker ps --filter ancestor=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest -q) && \
+    gcloud compute ssh "$INSTANCE_NAME" --zone="$ZONE" --command "
+        CONTAINER_ID=\$(docker ps --filter ancestor=$REGION-docker.pkg.dev/bayes-gpt/$INSTANCE_NAME/$INSTANCE_NAME:latest -q) && \
         if [ -z \"\$CONTAINER_ID\" ]; then
             echo \"Error: Could not find running container\"
             exit 1
@@ -50,7 +70,7 @@ else
 
     # Restart the container
     echo "Restarting container..."
-    gcloud compute ssh gpt-bayes --zone=us-central1-a --command "docker restart \$(docker ps --filter ancestor=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest -q)"
+    gcloud compute ssh "$INSTANCE_NAME" --zone="$ZONE" --command "docker restart \$(docker ps --filter ancestor=$REGION-docker.pkg.dev/bayes-gpt/$INSTANCE_NAME/$INSTANCE_NAME:latest -q)"
 fi
 
 echo "Deployment complete!"

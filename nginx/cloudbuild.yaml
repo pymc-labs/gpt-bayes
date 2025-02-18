@@ -38,6 +38,3 @@ images:
 
 substitutions:
     _SERVICE_FOLDER: .
-    _REPO_NAME: gcr2gce-proxy # Name of Google Artifact Registry (GAR)'s repo
-    _SERVICE_NAME: gcr2gce-proxy # Name of Cloud Run Service
-    _REGION: us-central1

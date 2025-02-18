@@ -2,48 +2,57 @@ import requests
 import json
 import time
 import pandas as pd
-
+import os
 import sys
 import io
+import dotenv
 
-def create_payload_csv():
-    # Load the user-uploaded data file
-    data = pd.read_csv('test-data/mmm_example.csv')
-    # Rename the 'y' column to 'sales' and select relevant columns
-    data.rename(columns={'y': 'sales'}, inplace=True)
-    mmm_data = data[['date_week', 'sales', 'x1', 'x2', 'event_1', 'event_2', 't']]
+dotenv.load_dotenv()
 
-    # Convert 'date_week' to datetime format
-    mmm_data.loc[:, 'date_week'] = pd.to_datetime(mmm_data['date_week']).dt.strftime('%Y-%m-%d')
+API_KEY = os.environ.get('API_KEY', None)
 
-    # Convert the prepared data to JSON format for payload, ensuring proper formatting
-    data_json = mmm_data.to_json(orient="split", index=False)
-    #print(data_json)
-    # Example payload
+def create_payload():
     payload = {
-        "df": data_json,
+        "domain": "dev-nextgen-mmm.pymc-labs.com",
+        "method": "post",
+        "path": "/run_mmm_async",
+        "operation": "runMMMAsync",
+        "operation_hash": "0c869884cb92378e2dfe2ae377cac236cbc2b9d0",
+        "is_consequential": True,
+        "openaiFileIdRefs": [
+            {
+                "name": "mmm_example.csv",
+                "id": "file-1234567890",
+                "mime_type": "text/csv",
+                "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
+            }
+        ],
         "date_column": "date_week",
-        "channel_columns": ["x1", "x2"],
-        "adstock_max_lag": 2,
-        "yearly_seasonality": 8,
-        "control_columns": ["event_1", "event_2", "t"]
+        "channel_columns": [
+            "x1",
+            "x2"
+        ],
+        "adstock_max_lag": 8,
+        "yearly_seasonality": 2,
+        "y_column": "y"
     }
-
     return payload
 
 
 def test_async_mmm_run(base_url):
     # Payload that includes data
-    payload = create_payload_csv()
+    payload = create_payload()
 
     # Replace with your API endpoint for async run
     run_url = f"{base_url}/run_mmm_async"
 
     # Make a POST request to initiate the model run
-    headers = {'Content-Type': 'application/json'}
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY
+    }
     response = requests.post(run_url, data=json.dumps(payload), headers=headers)
     
-    print(response)
     # Assert the status code for initiation
     assert response.status_code == 200
 
@@ -52,11 +61,11 @@ def test_async_mmm_run(base_url):
     print(f"Got task_id {task_id}")
 
     # Polling URL
-    results_url = f"{base_url}/get_results?task_id={task_id}"
+    results_url = f"{base_url}/get_summary_statistics?task_id={task_id}"
 
     # Poll for results
     while True:
-        result_response = requests.get(results_url)
+        result_response = requests.get(results_url, headers=headers)
         result_data = result_response.json()
 
         if result_data["status"] == "completed":
@@ -87,10 +96,12 @@ if __name__ == "__main__":
     
     if environment == "local":
         base_url = "http://localhost:5001"
-    elif environment == "deployed":
+    elif environment == "deployed-production":
         base_url = "https://nextgen-mmm.pymc-labs.com"
+    elif environment == "deployed-development":
+        base_url = "https://dev-nextgen-mmm.pymc-labs.com"
     else:
-        print("Invalid argument. Use 'local' or 'deployed'.")
+        print("Invalid argument. Use 'local' or 'deployed-production' or 'deployed-development'.")
         sys.exit(1)
 
     test_async_mmm_run(base_url)

@@ -1,0 +1,22 @@
+production:
+  instanceName: gpt-bayes
+  region: us-central1
+  zone: us-central1-a
+  nginx:
+    repoName: gcr2gce-proxy
+    serviceName: gcr2gce-proxy
+    serverName: nextgen-mmm.pymc-labs.com
+    ipAddress: 35.208.203.115
+    port: 5000
+    region: us-central1
+development:
+  instanceName: dev-gpt-bayes
+  region: us-central1
+  zone: us-central1-a
+  nginx:
+    repoName: dev-gcr2gce-proxy
+    serviceName: dev-gcr2gce-proxy
+    serverName: dev-nextgen-mmm.pymc-labs.com
+    ipAddress: 34.59.137.141
+    port: 5000
+    region: us-central1

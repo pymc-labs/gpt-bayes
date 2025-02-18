@@ -4,7 +4,8 @@ A cloud-based Marketing Mix Modeling (MMM) solution deployed on Google Cloud Pla
 
 ## Quick Deployment
 ```bash
-./deploy.sh  # Deploy the latest version to production
+./deploy.sh production # Deploy the latest version to production
+./deploy.sh development # Deploy the latest version to development
 ```
 
 ## System Architecture
@@ -18,6 +19,7 @@ GPT-Bayes consists of two main components:
 
 2. **Backend Service**
    - Production URL: https://nextgen-mmm.pymc-labs.com
+   - Development URL: https://dev-nextgen-mmm.pymc-labs.com
    - Function: Handles model fitting and parameter management via API endpoints
    - Infrastructure: Hosted on Google Cloud Engine (GCE) under the `gpt-bayes` project
 
@@ -31,8 +33,10 @@ GPT-Bayes consists of two main components:
 - `nginx/` - NGINX reverse proxy settings
 - `dockerfile` - Container specifications
 - `start.sh` - Container initialization
+- `build.sh` - Build the container image
 - `deploy.sh` - Deployment automation
 - `environment.yml` - Development environment specifications
+- `config.yaml` - Environment configuration settings
 
 ### AI Agent Settings
 - `gpt-agent/gpt_prompt.md` - System instructions
@@ -45,23 +49,33 @@ GPT-Bayes consists of two main components:
 
 ## Deployment Guide
 
-The application runs on Google Compute Engine (GCE) under the `gpt-bayes` project, accessible at `https://nextgen-mmm.pymc-labs.com`.
+The application runs on Google Compute Engine (GCE) under the `gpt-bayes` project, accessible at `https://nextgen-mmm.pymc-labs.com` (production) and `https://dev-nextgen-mmm.pymc-labs.com` (development).
+
+### Build and Push Docker Image
+
+Build and push the Docker image to Google Artifact Registry (GAR).
+```bash
+./build.sh production # Build and publish to production
+./build.sh development # Build and publish to development
+```
 
 ### Standard Deployment
 
-Use `deploy.sh` to update the application. This script handles:
+Once the Docker image is built and pushed to GAR, use `deploy.sh` to update the application. This script handles:
 - Updating the container in Google Artifact Registry (GAR)
-- Deploying to the production environment
+- Deploying to the specified environment
 
 ```bash
-./deploy.sh
+./deploy.sh production # Deploy the latest version to production
+./deploy.sh development # Deploy the latest version to development
 ```
 
 ### Server Management
 
-Access the production server:
+Access the specified server:
 ```bash
 gcloud compute ssh gpt-bayes --zone us-central1-a
+gcloud compute ssh dev-gpt-bayes --zone us-central1-a
 ```
 
 Container management commands:
@@ -81,10 +95,11 @@ docker exec -it CONTAINER_ID /bin/bash
 
 Build and publish to Google Artifact Registry:
 ```bash
-gcloud builds submit
+./build.sh production # Build and publish to production
+./build.sh development # Build and publish to development
 ```
 
-Note: This updates the container image but doesn't affect the production deployment.
+Note: This updates the container image but doesn't affect the specified deployment.
 
 ### Server Instance Management
 
@@ -93,28 +108,42 @@ View available Container-Optimized OS images:
 gcloud compute images list --project cos-cloud --no-standard-images
 ```
 
-Update production container:
+Update specified container:
 ```bash
 # Clear existing containers
 gcloud compute ssh gpt-bayes --zone us-central1-a --command 'docker system prune -f -a'
+gcloud compute ssh dev-gpt-bayes --zone us-central1-a --command 'docker system prune -f -a'
 
 # Deploy new container
 gcloud compute instances update-container gpt-bayes \
   --zone=us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest
+
+gcloud compute instances update-container dev-gpt-bayes \
+  --zone=us-central1-a \
+  --container-image=us-central1-docker.pkg.dev/bayes-gpt/dev-gpt-bayes/dev-gpt-bayes:latest
 ```
 
 Create new server instance:
 ```bash
-gcloud compute instances create gpt-bayes \
- --machine-type e2-standard-4 \
- --boot-disk-size 20GB \
- --image image-name \
- --image-project cos-cloud \
- --zone us-central1 \
- --metadata container-image=your-container-image-name \
- --tags http-server \
- --firewall-create allow-http
+ gcloud compute instances create-with-container gpt-bayes \
+  --machine-type e2-standard-4 \
+  --boot-disk-size 20GB \
+  --image cos-stable-117-18613-164-4 \
+  --image-project cos-cloud \
+  --zone us-central1-a \
+  --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest \
+  --tags http-server,https-server,allow-tcp-5000
+
+ gcloud compute instances create-with-container dev-gpt-bayes \
+  --machine-type e2-standard-4 \
+  --boot-disk-size 20GB \
+  --image cos-stable-117-18613-164-4 \
+  --image-project cos-cloud \
+  --zone us-central1-a \
+  --container-image=us-central1-docker.pkg.dev/bayes-gpt/dev-gpt-bayes/dev-gpt-bayes:latest \
+  --tags http-server,https-server,allow-tcp-5000
+
 ```
 
 ### NGINX Configuration (Advanced)
@@ -122,13 +151,14 @@ gcloud compute instances create gpt-bayes \
 Deploy NGINX reverse proxy updates:
 ```bash
 cd nginx
-gcloud builds submit
+./deploy.sh production # Deploy the latest version to production
+./deploy.sh development # Deploy the latest version to development
 ```
 
 Update backend IP address:
-1. Navigate to `nginx/nginx.conf`
-2. Modify the `proxy_pass` directive with the new IP
-3. Example: `proxy_pass http://35.208.203.115:5000;`
+1. Navigate to `config.yaml`
+2. Modify the `ipAddress` directive with the new IP
+3. Example: `ipAddress: 35.208.203.115`
 
 ## Local Development
 

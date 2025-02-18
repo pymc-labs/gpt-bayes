@@ -7,6 +7,8 @@ steps:
           - -t
           - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
           - ${_SERVICE_FOLDER}
+          - --build-arg
+          - API_KEY=${_API_KEY}
 
     # Push the container image to Artifact Registry
     - id: push image
@@ -20,6 +22,3 @@ images:
 
 substitutions:
     _SERVICE_FOLDER: .
-    _REPO_NAME: gpt-bayes # Name of Google Artifact Registry (GAR)'s repo
-    _SERVICE_NAME: gpt-bayes # Name of Cloud Run Service
-    _REGION: us-central1
