@@ -4,6 +4,9 @@ ENV APP_HOME=/app
 ENV PORT=5000
 ENV JAX_PLATFORM_NAME=cpu
 
+ARG API_KEY
+ENV API_KEY=$API_KEY
+
 WORKDIR $APP_HOME
 
 COPY . ./
@@ -14,8 +17,8 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
     mkdir -p /opt/conda/var/db && \
     chown $MAMBA_USER:$MAMBA_USER /opt/conda/var/db && \
     mkdir -p /opt/conda/var/db/redis && \
-    chown $MAMBA_USER:$MAMBA_USER /opt/conda/var/db/redis && \
-    chmod 750 /opt/conda/var/db/redis
+    chown -R $MAMBA_USER:$MAMBA_USER /opt/conda/var/db/redis && \
+    chmod -R 770 /opt/conda/var/db/redis
 
 # Copy the start script
 COPY --chown=$MAMBA_USER:$MAMBA_USER start.sh $APP_HOME/start.sh

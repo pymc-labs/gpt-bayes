@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://nextgen-mmm.pymc-labs.com"
+      "url": "https://dev-nextgen-mmm.pymc-labs.com"
     }
   ],
   "paths": {
@@ -23,9 +23,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "df": {
-                    "type": "string",
-                    "description": "Data in CSV format for the model. Must contain at least 15 rows."
+                  "openaiFileIdRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of OpenAI file IDs to be used as references."
                   },
                   "date_column": {
                     "type": "string",
@@ -48,6 +51,13 @@
                     "type": "integer",
                     "default": 2,
                     "description": "Yearly seasonality factor."
+                  },
+                  "control_columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of control column names."
                   }
                 }
               }
@@ -74,10 +84,49 @@
         }
       }
     },
-    "/get_results": {
+    "/get_task_status": {
+      "get": {
+        "description": "Retrieves the status of an MMM model run.",
+        "operationId": "getTaskStatus",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "query",
+            "required": true,
+            "description": "The task ID of the MMM model run.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the model execution.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Status of the model execution."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message, present if status is 'failed'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_summary_statistics": {
       "get": {
         "description": "Retrieves the results of an MMM model run.",
-        "operationId": "getMMMResults",
+        "operationId": "getSummaryStatistics",
         "parameters": [
           {
             "name": "task_id",
