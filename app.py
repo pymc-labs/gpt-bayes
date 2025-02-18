@@ -19,7 +19,7 @@ import io
 
 from functools import wraps
 
-__version__ = "0.3"
+__version__ = "0.4"
 
 API_KEY = os.environ.get('API_KEY', None)
 
@@ -303,37 +303,6 @@ def get_summary_statistics():
     except Exception as e:
         logging.error("Error in extract_summary_statistics: %s", str(e), exc_info=True)
         return jsonify({"status": "failure", "error": str(e)}), 500
-
-# @app.route('/get_posterior_predictive', methods=['GET'])
-# @check_task_status
-# def get_posterior_predictive():
-#     try:
-#         task_id = request.args.get('task_id')
-#         task = run_mmm_task.AsyncResult(task_id)
-#         mmm = task.result
-#         logging.info("MMM model: %s", mmm)
-
-#         logging.info("Sampling posterior predictive")
-#         mmm.sample_posterior_predictive(mmm.X, extend_idata = True, combined = True)
-#         logging.info("Posterior predictive sampled")
-
-#         logging.info("Generating posterior predictive plot")
-#         fig = mmm.plot_posterior_predictive()
-#         logging.info("Posterior predictive plot generated")
-        
-#         axes = fig.get_axes()[0]
-#         posterior_predictive_dict = {
-#             'obs_xdata': list(map(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'), axes.get_lines()[0].get_xdata())),
-#             'obs_ydata': list(axes.get_lines()[0].get_ydata()),
-#             'pred_ydata': list(axes.get_lines()[1].get_ydata())
-#         }
-#         posterior_predictive_json = json.dumps(posterior_predictive_dict)
-#         logging.info("Posterior predictive JSON generated")
-#         return jsonify({"status": "completed", "posterior_predictive": posterior_predictive_json})
-#     except Exception as e:
-#         logging.error("Error in get_posterior_predictive: %s", str(e), exc_info=True)
-#         return jsonify({"status": "failure", "error": str(e)}), 500
-
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
