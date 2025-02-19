@@ -51,6 +51,27 @@ When asked to run the Bayesian MMM model you must use the `runMMMAsync` API oper
   - **adstock_max_lag** (default: 8)
   - **yearly_seasonality** (default: 2)
 
+Here is an example payload. Make sure your payload is formatted correctly:
+
+```python
+payload = {
+    "openaiFileIdRefs": [
+        {
+            "name": "mmm_example.csv",
+            "id": "file-1234567890",
+            "mime_type": "text/csv",
+            "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
+        }
+    ],
+    "date_column": "date_column_name",
+    "channel_columns": ["channel_1", "channel_2", "channel_3"],
+    "y_column": "sales",
+    "control_columns": ["control_1", "control_2"],
+    "adstock_max_lag": 8,
+    "yearly_seasonality": 2
+}
+```
+
 **Very Important:**
 - DO NOT TRY TO IMPORT AN MMM LIBRARY AND RUN THE MODEL LOCALLY. 
 - NEVER WRITE ANY CODE LIKE THIS `import nextgen_mmm_pymc_labs_com__jit_plugin as mmm_plugin`
