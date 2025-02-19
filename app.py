@@ -234,7 +234,7 @@ def run_mmm_async():
         logging.debug("run_mmm_async request data: %s", data)
 
         logging.info("checking that the data has file_refs: %s", data)
-        if "openaiFileIdRefs" not in data: # TODO: do a more thorough schema check here
+        if ("openaiFileIdRefs" not in data) or (len(data["openaiFileIdRefs"]) == 0): # TODO: do a more thorough schema check here
             logging.error("Data does not have openaiFileIdRefs")
             return jsonify({"error": "Request must include openaiFileIdRefs"}), 400
         else:
