@@ -11,7 +11,17 @@ dotenv.load_dotenv()
 
 API_KEY = os.environ.get('API_KEY', None)
 
-def create_payload():
+def create_payload(include_file_refs=True):
+    openaiFileIdRefs = []
+    if include_file_refs:
+        openaiFileIdRefs = [
+            {
+                "name": "mmm_example.csv",
+                "id": "file-1234567890",
+                "mime_type": "text/csv",
+                "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
+            }
+        ]
     payload = {
         "domain": "dev-nextgen-mmm.pymc-labs.com",
         "method": "post",
@@ -19,14 +29,7 @@ def create_payload():
         "operation": "runMMMAsync",
         "operation_hash": "0c869884cb92378e2dfe2ae377cac236cbc2b9d0",
         "is_consequential": True,
-        "openaiFileIdRefs": [
-            {
-                "name": "mmm_example.csv",
-                "id": "file-1234567890",
-                "mime_type": "text/csv",
-                "download_link": "https://raw.githubusercontent.com/pymc-labs/pymc-marketing/refs/heads/main/data/mmm_example.csv"
-            }
-        ],
+        "openaiFileIdRefs": openaiFileIdRefs,
         "date_column": "date_week",
         "channel_columns": [
             "x1",
@@ -37,6 +40,17 @@ def create_payload():
         "y_column": "y"
     }
     return payload
+
+def test_missing_file_refs(base_url):
+    payload = create_payload(include_file_refs=False)
+    run_url = f"{base_url}/run_mmm_async"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY
+    }
+    response = requests.post(run_url, data=json.dumps(payload), headers=headers)
+    assert response.status_code == 400
+    assert response.json()["error"] == "Request must include openaiFileIdRefs"
 
 
 def test_async_mmm_run(base_url):
@@ -104,4 +118,5 @@ if __name__ == "__main__":
         print("Invalid argument. Use 'local' or 'deployed-production' or 'deployed-development'.")
         sys.exit(1)
 
+    test_missing_file_refs(base_url)
     test_async_mmm_run(base_url)
