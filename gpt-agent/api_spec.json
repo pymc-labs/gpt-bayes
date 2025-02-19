@@ -27,9 +27,35 @@
                   "openaiFileIdRefs": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "id",
+                        "mime_type",
+                        "download_link"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Name of the file"
+                        },
+                        "id": {
+                          "type": "string",
+                          "description": "OpenAI file ID"
+                        },
+                        "mime_type": {
+                          "type": "string",
+                          "description": "MIME type of the file"
+                        },
+                        "download_link": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL to download the file"
+                        }
+                      }
                     },
-                    "description": "List of OpenAI file IDs to be used as references."
+                    "minItems": 1,
+                    "description": "List of OpenAI file references"
                   },
                   "date_column": {
                     "type": "string",
