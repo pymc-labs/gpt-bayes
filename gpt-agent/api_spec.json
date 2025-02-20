@@ -3,7 +3,7 @@
   "info": {
     "title": "PyMC-Marketing MMM API",
     "description": "Asynchronous API for running Marketing Mix Modeling.",
-    "version": "v0.0.3"
+    "version": "v0.0.4"
   },
   "servers": [
     {
@@ -22,17 +22,43 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["openaiFileIdRefs", "date_column", "channel_columns", "y_column"],
                 "properties": {
                   "openaiFileIdRefs": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "id",
+                        "mime_type",
+                        "download_link"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Name of the file"
+                        },
+                        "id": {
+                          "type": "string",
+                          "description": "OpenAI file ID"
+                        },
+                        "mime_type": {
+                          "type": "string",
+                          "description": "MIME type of the file"
+                        },
+                        "download_link": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL to download the file"
+                        }
+                      }
                     },
-                    "description": "List of OpenAI file IDs to be used as references."
+                    "minItems": 1,
+                    "description": "List of OpenAI file references"
                   },
                   "date_column": {
                     "type": "string",
-                    "default": "date",
                     "description": "Name of the date column in data."
                   },
                   "channel_columns": {
@@ -41,6 +67,10 @@
                       "type": "string"
                     },
                     "description": "List of channel column names."
+                  },
+                  "y_column": {
+                    "type": "string",
+                    "description": "Name of the y column in data."
                   },
                   "adstock_max_lag": {
                     "type": "integer",

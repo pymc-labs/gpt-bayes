@@ -1,7 +1,9 @@
 import json
+from jsonschema import validate, ValidationError
 from flask import Flask, request, jsonify
 from celery import Celery, Task
 from kombu import serialization
+
 
 import pandas as pd
 import arviz as az
@@ -19,7 +21,7 @@ import io
 
 from functools import wraps
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 API_KEY = os.environ.get('API_KEY', None)
 
@@ -101,6 +103,16 @@ DATA_DIR = "/tmp/mmm_data"
 os.makedirs(DATA_DIR, exist_ok=True)
 # Ensure proper permissions (readable/writable by all users)
 os.chmod(DATA_DIR, 0o777)
+
+# Extract the request schema from the OpenAPI spec
+def get_mmm_request_schema():
+    try:
+        with open('gpt-agent/api_spec.json', 'r') as f:
+            api_spec = json.load(f)
+            return api_spec['paths']['/run_mmm_async']['post']['requestBody']['content']['application/json']['schema']
+    except Exception as e:
+        logging.error("Failed to load API spec: %s", str(e))
+        raise e
 
 
 @celery.task(bind=True)
@@ -232,6 +244,20 @@ def run_mmm_async():
         logging.info("Received request to run_mmm_async")
         data = request.get_json()
         logging.debug("run_mmm_async request data: %s", data)
+
+        try:
+            schema = get_mmm_request_schema()
+            validate(instance=data, schema=schema)
+        except ValidationError as e:
+            logging.error("Schema validation failed: %s", str(e))
+            return jsonify({
+                "error": "Invalid request format",
+                "details": {
+                    "message": str(e),
+                    "path": " -> ".join(str(p) for p in e.path),
+                    "schema_path": " -> ".join(str(p) for p in e.schema_path)
+                }
+            }), 400
 
         task = run_mmm_task.apply_async(args=[data])
         logging.info("Task submitted with ID: %s", task.id)
