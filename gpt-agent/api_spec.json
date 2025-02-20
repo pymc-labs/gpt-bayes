@@ -22,7 +22,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["openaiFileIdRefs"],
+                "required": ["openaiFileIdRefs", "date_column", "channel_columns", "y_column"],
                 "properties": {
                   "openaiFileIdRefs": {
                     "type": "array",
@@ -59,7 +59,6 @@
                   },
                   "date_column": {
                     "type": "string",
-                    "default": "date",
                     "description": "Name of the date column in data."
                   },
                   "channel_columns": {
@@ -68,6 +67,10 @@
                       "type": "string"
                     },
                     "description": "List of channel column names."
+                  },
+                  "y_column": {
+                    "type": "string",
+                    "description": "Name of the y column in data."
                   },
                   "adstock_max_lag": {
                     "type": "integer",

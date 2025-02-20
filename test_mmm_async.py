@@ -50,8 +50,7 @@ def test_missing_file_refs(base_url):
     }
     response = requests.post(run_url, data=json.dumps(payload), headers=headers)
     assert response.status_code == 400
-    assert response.json()["error"] == "Request must include openaiFileIdRefs"
-
+    assert response.json()["error"] == "Invalid request format"
 
 def test_async_mmm_run(base_url):
     # Payload that includes data
