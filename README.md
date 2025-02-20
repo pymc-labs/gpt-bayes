@@ -128,8 +128,8 @@ Create new server instance:
 ```bash
  gcloud compute instances create-with-container gpt-bayes \
   --machine-type e2-standard-4 \
-  --boot-disk-size 20GB \
-  --image cos-stable-117-18613-164-4 \
+  --boot-disk-size 200GB \
+  --image cos-stable-117-18613-164-13 \
   --image-project cos-cloud \
   --zone us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/gpt-bayes/gpt-bayes:latest \
@@ -138,7 +138,7 @@ Create new server instance:
  gcloud compute instances create-with-container dev-gpt-bayes \
   --machine-type e2-standard-4 \
   --boot-disk-size 20GB \
-  --image cos-stable-117-18613-164-4 \
+  --image cos-stable-117-18613-164-13 \
   --image-project cos-cloud \
   --zone us-central1-a \
   --container-image=us-central1-docker.pkg.dev/bayes-gpt/dev-gpt-bayes/dev-gpt-bayes:latest \

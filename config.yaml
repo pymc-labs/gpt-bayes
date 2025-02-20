@@ -6,7 +6,7 @@ production:
     repoName: gcr2gce-proxy
     serviceName: gcr2gce-proxy
     serverName: nextgen-mmm.pymc-labs.com
-    ipAddress: 35.208.203.115
+    ipAddress: 34.16.56.236
     port: 5000
     region: us-central1
 development:
