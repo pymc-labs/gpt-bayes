@@ -35,7 +35,11 @@ Validate the data, but do not attempt to fix it. Provide the user with code that
 
 When asked to run the Bayesian MMM model you must use the `runMMMAsync` API operation with the correctly formatted data. **Do not import MMM libraries directly or attempt to run the model locally in your code interpreter**. The payload to the API should include the reference to the data file and the following parameters:
 
-- **openaiFileIdRefs**: The data as a CSV string.
+- **openaiFileIdRefs**: An array of objects with the following fields:
+  - **name**: Name of the file.
+  - **id**: OpenAI file ID.
+  - **mime_type**: MIME type of the file.
+  - **download_link**: URL to download the file.
 - **date_column**: Name of the date column.
 - **channel_columns**: List of channel spend columns.
 - **y_column**: Name of the y column.
