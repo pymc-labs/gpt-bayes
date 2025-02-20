@@ -21,7 +21,7 @@ import io
 
 from functools import wraps
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 API_KEY = os.environ.get('API_KEY', None)
 
