@@ -1,0 +1,22 @@
+steps:
+    # Build the container image
+    - id: build image
+      name: gcr.io/cloud-builders/docker
+      args:
+          - build
+          - -t
+          - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+          - ${_SERVICE_FOLDER}
+
+    # Push the container image to Artifact Registry
+    - id: push image
+      name: gcr.io/cloud-builders/docker
+      args:
+          - push
+          - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+
+images:
+    - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
+
+substitutions:
+    _SERVICE_FOLDER: .
