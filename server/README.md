@@ -209,3 +209,24 @@ The test suite:
 - Submits to specified API endpoint
 - Monitors result generation
 - Displays model analytics
+
+
+# Build local docker image
+
+docker build -t gpt-bayes . \
+--build-arg API_KEY=$API_KEY \
+--build-arg MODEL_BUCKET=$CLOUD_RUN_MODEL_BUCKET \
+--build-arg CLOUD_RUN_URL=$CLOUD_RUN_URL
+
+
+# Run local docker container
+
+docker run -p 8080:8080 gpt-bayes
+
+
+
+
+
+
+
+

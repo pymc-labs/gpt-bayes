@@ -9,6 +9,10 @@ steps:
           - ${_SERVICE_FOLDER}
           - --build-arg
           - API_KEY=${_API_KEY}
+          - --build-arg
+          - MODEL_BUCKET=${_MODEL_BUCKET}
+          - --build-arg
+          - CLOUD_RUN_URL=${_CLOUD_RUN_URL}
 
     # Push the container image to Artifact Registry
     - id: push image
