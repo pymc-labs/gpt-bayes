@@ -22,7 +22,7 @@ def register_routes(app):
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {auth_token}'
             }
-            
+
             response = requests.post(
                 f"{CLOUD_RUN_URL}/run_mmm",
                 headers=headers,
@@ -43,11 +43,19 @@ def register_routes(app):
             logging.debug("run_mmm_async request data: %s", data)
 
             # Validate request schema
+            logging.info("Validating request schema")
             schema = get_mmm_request_schema()
-            validate(instance=data, schema=schema)
+            try:
+                validate(instance=data, schema=schema)
+                logging.info("Request schema validated successfully")
+            except Exception as e:
+                logging.error("Error in request schema validation: %s", str(e), exc_info=True)
+                return jsonify({"error": str(e)}), 400
 
             # Submit task to Celery
+            logging.info("Submitting task to Celery")
             task = run_mmm_task.delay(data)
+            logging.info("Task submitted to Celery successfully")
 
             return jsonify({
                 "status": "accepted",

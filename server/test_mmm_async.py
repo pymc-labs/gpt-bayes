@@ -50,7 +50,6 @@ def test_missing_file_refs(base_url):
     }
     response = requests.post(run_url, data=json.dumps(payload), headers=headers)
     assert response.status_code == 400, f"Expected status code 400, got {response.status_code}"
-    assert response.json()["error"] == "Invalid request format"
 
 def test_async_mmm_run(base_url):
     # Payload that includes data
@@ -171,10 +170,9 @@ if __name__ == "__main__":
         print("Invalid argument. Use 'local' or 'deployed-production' or 'deployed-development'.")
         sys.exit(1)
 
-    # test_missing_file_refs(base_url)
-    # test_async_mmm_run(base_url)
+    test_missing_file_refs(base_url)
+    test_async_mmm_run(base_url)
 
-    # After existing tests, run load tests
     print("\n=== Running Load Tests ===")
     
     loads = [1, 5, 10, 25]
