@@ -166,6 +166,12 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "model_filename",
+            "in": "query",
+            "required": true,
+            "description": "The filename of the model to retrieve."
           }
         ],
         "responses": {

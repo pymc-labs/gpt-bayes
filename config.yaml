@@ -9,6 +9,9 @@ production:
     ipAddress: 34.16.56.236
     port: 5000
     region: us-central1
+  cloudRun:
+    serviceName: gpt-bayes-cloudrun
+    modelBucket: gpt-bayes-models
 development:
   instanceName: dev-gpt-bayes
   region: us-central1
@@ -20,3 +23,7 @@ development:
     ipAddress: 34.59.137.141
     port: 5000
     region: us-central1
+  cloudRun:
+    serviceName: dev-gpt-bayes-cloudrun
+    modelBucket: dev-bayes-gpt-models
+    url: https://dev-gpt-bayes-cloudrun-i66d5bzhua-uc.a.run.app
