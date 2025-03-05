@@ -12,7 +12,7 @@ ENVIRONMENT=$1
 # Function to read config value
 get_config() {
     local key=$1
-    yq ".$ENVIRONMENT.$key" config.yaml | tr -d '"'
+    yq ".$ENVIRONMENT.$key" ../config.yaml | tr -d '"'
 }
 
 # Get configuration values
@@ -48,6 +48,7 @@ else
     echo "Copying new files and restarting application..."
     # First, copy files to the instance
     gcloud compute scp --zone="$ZONE" --recurse ./*.py "$INSTANCE_NAME":/tmp/
+    gcloud compute scp --zone="$ZONE" --recurse ./api_spec.json "$INSTANCE_NAME":/tmp/
     
     # Then copy files into the container and restart services
     gcloud compute ssh "$INSTANCE_NAME" --zone="$ZONE" --command "

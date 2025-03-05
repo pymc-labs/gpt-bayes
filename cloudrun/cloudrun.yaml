@@ -7,8 +7,6 @@ steps:
           - -t
           - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}
           - ${_SERVICE_FOLDER}
-          - --build-arg
-          - API_KEY=${_API_KEY}
 
     # Push the container image to Artifact Registry
     - id: push image
