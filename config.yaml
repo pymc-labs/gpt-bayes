@@ -6,9 +6,12 @@ production:
     repoName: gcr2gce-proxy
     serviceName: gcr2gce-proxy
     serverName: nextgen-mmm.pymc-labs.com
-    ipAddress: 34.16.56.236
+    ipAddress: 35.208.203.115
     port: 5000
     region: us-central1
+  cloudRun:
+    serviceName: gpt-bayes-cloudrun
+    modelBucket: bayes-gpt-models
 development:
   instanceName: dev-gpt-bayes
   region: us-central1
@@ -20,3 +23,6 @@ development:
     ipAddress: 34.59.137.141
     port: 5000
     region: us-central1
+  cloudRun:
+    serviceName: dev-gpt-bayes-cloudrun
+    modelBucket: dev-bayes-gpt-models

@@ -1,0 +1,8 @@
+Flask==3.0.3
+gunicorn==22.0.0
+pandas==2.2.3
+requests==2.32.3
+dill==0.3.9
+arviz==0.20.0
+numpyro==0.17.0
+google-cloud-storage==3.1.0
