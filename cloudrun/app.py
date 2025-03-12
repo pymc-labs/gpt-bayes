@@ -47,6 +47,7 @@ def run_mmm():
         # Extract model parameters.
         date_column = data.get("date_column", "date")
         channel_columns = data.get("channel_columns", [])
+        control_columns = data.get("control_columns", [])
         adstock_max_lag = data.get("adstock_max_lag", 8)
         yearly_seasonality = data.get("yearly_seasonality", 2)
         y_column = data.get("y_column", "y")
@@ -63,7 +64,7 @@ def run_mmm():
             saturation=LogisticSaturation(),
             date_column=date_column,
             channel_columns=channel_columns,
-            control_columns=None,
+            control_columns=control_columns,
             yearly_seasonality=yearly_seasonality,
         )
         mmm.fit(X, y, nuts_sampler="numpyro")

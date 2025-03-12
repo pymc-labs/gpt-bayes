@@ -26,7 +26,11 @@ API_KEY=$(grep API_KEY .env | cut -d "'" -f 2)
 INSTANCE_NAME=$(get_config "instanceName")
 REGION=$(get_config "region")
 CLOUD_RUN_MODEL_BUCKET=$(get_cloudrun_config "modelBucket")
-CLOUD_RUN_URL=$(get_cloudrun_config "url")
+CLOUD_RUN_SERVICE_NAME=$(get_cloudrun_config "serviceName")
+CLOUD_RUN_URL=$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
+  --region="$REGION" \
+  --format="value(status.url)")
+
 
 echo "Building $INSTANCE_NAME in $REGION"
 
